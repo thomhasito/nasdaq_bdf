@@ -1,9 +1,7 @@
-from const import EnumPeriod
+from utils.const import EnumPeriod
 from pyspark.sql import functions as F
 from datetime import datetime, timedelta
 import calendar
-from enum import Enum
-from pathlib import Path
 
 def format_period_column(period: EnumPeriod, date_column: str) -> str:
     """
@@ -71,27 +69,3 @@ def add_period(start_date: str, period: EnumPeriod, amount: int) -> str:
         raise ValueError(f"Unknown period: {period}")
 
     return new_date.strftime('%Y-%m-%d')
-
-def get_path(folder: str, file_name: str) -> Path:
-    """
-    Returns a path to a file in a folder.
-
-    Parameters
-    ----------
-    folder : str
-        The folder name.
-    file_name : str
-        The file name.
-        
-    Returns
-    -------
-    Path
-    The path to the file.
-    """
-    # get project root
-    project_root = Path(__file__).parent.parent
-
-    # return path to file
-    file_dir = project_root / folder
-    file_dir.mkdir(parents=True, exist_ok=True)
-    return file_dir / file_name

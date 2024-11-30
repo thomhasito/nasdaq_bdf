@@ -13,7 +13,7 @@ class NasdaqDF:
         self.logger = Session.get_instance().get_logger()
         self.session = Session.get_instance().get_session()
 
-        self.list_nasdaq_path = csv_path
+        self.list_nasdaq_path = str(csv_path)
         self.stock_schema = self._define_stock_schema()
         self.nasdaq_schema = self._define_nasdaq_schema()
         self.analysis_period = analysis_period
@@ -82,7 +82,7 @@ class NasdaqDF:
             stock_data.columns = stock_data.columns.get_level_values(0)
             stock_data.columns.name = None
             date = stock_data.index
-            stock_data.index = stock_data.index.tz_convert('UTC')
+            stock_data.index = stock_data.index.tz_localize('UTC')
             stock_data[ColumnNames.DATE.value] = stock_data.index.date
             stock_data[ColumnNames.TICKER.value] = ticker
 
@@ -122,8 +122,8 @@ class NasdaqDF:
             if stock_df is None:
                 self.logger.warning("The stock_df is None. No data loaded.")
             else:
-                if stock_df.count() < len(self.tickers):
-                    self.logger.warning(f"Downloaded data contains fewer rows ({stock_df.count()}) than tickers ({len(self.tickers)})")
+                #if stock_df.count() < len(self.tickers):
+                #    self.logger.warning(f"Downloaded data contains fewer rows ({stock_df.count()}) than tickers ({len(self.tickers)})")
                 self.logger.info("Stock DataFrame loaded successfully.")
             return stock_df
 
@@ -144,12 +144,3 @@ class NasdaqDF:
             if merged_df is not None:
                 self.logger.info("Merged stock and companies DataFrame successfully.")  
             return merged_df
-    
-from utils.const import COMPANIES_CSV
-
-session = Session.get_instance()
-analysis_period = "1y"  # 1 year
-nasdaq_data = NasdaqDF(csv_path=COMPANIES_CSV, analysis_period=analysis_period)
-companies_df = nasdaq_data.load_companies_df()
-stock_df = nasdaq_data.load_stock_df()
-merged_df = nasdaq_data.merge_dataframes(stock_df, companies_df)

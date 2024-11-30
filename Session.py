@@ -7,6 +7,9 @@ from pyrate_limiter import Duration, RequestRate, Limiter
 from pyspark.sql import SparkSession
 from utils.const import APP_NAME, APP_VERSION, YF_CACHE
 
+class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
+    pass
+
 class Session:
     _instance = None
     _app_name = APP_NAME
@@ -46,8 +49,6 @@ class Session:
 
 
     def _setup_session(self) -> Session:
-        class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
-            pass
         
         limiter = Limiter(RequestRate(10, Duration.SECOND*5))
         bucket_class = MemoryQueueBucket

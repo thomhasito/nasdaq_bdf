@@ -1,5 +1,5 @@
 from enum import Enum
-from utils.utils import get_path
+from pathlib import Path
 
 class ColumnNames(Enum):
     DATE = "Date"
@@ -14,10 +14,17 @@ class ColumnNames(Enum):
     INDUSTRY = "Industry"
     SECTOR = "Sector"
 
-    def get_ordered_items(self, all: bool = False) -> list:
-        ordered_items = [self.DATE, self.TICKER, self.OPEN, self.HIGH, self.LOW, self.CLOSE, self.ADJ_CLOSE, self.VOLUME]
+    @staticmethod
+    def get_ordered_items(all: bool = False) -> list:
+        ordered_items = [
+            ColumnNames.DATE.value, ColumnNames.TICKER.value, ColumnNames.OPEN.value,
+            ColumnNames.HIGH.value, ColumnNames.LOW.value, ColumnNames.CLOSE.value,
+            ColumnNames.ADJ_CLOSE.value, ColumnNames.VOLUME.value
+        ]
         if all:
-            ordered_items.extend([self.COMPANY_NAME, self.INDUSTRY, self.SECTOR])
+            ordered_items.extend([
+                ColumnNames.COMPANY_NAME.value, ColumnNames.INDUSTRY.value, ColumnNames.SECTOR.value
+            ])
         return ordered_items
 
 class EnumPeriod(Enum):
@@ -41,6 +48,30 @@ DIR_DATA = "data"
 DIR_SESSION = "session"
 DIR_APP = "app"
 DIR_CACHE = "cache"
+
+def get_path(folder: str, file_name: str) -> Path:
+    """
+    Returns a path to a file in a folder.
+
+    Parameters
+    ----------
+    folder : str
+        The folder name.
+    file_name : str
+        The file name.
+        
+    Returns
+    -------
+    Path
+    The path to the file.
+    """
+    # get project root
+    project_root = Path(__file__).parent.parent
+
+    # return path to file
+    file_dir = project_root / folder
+    file_dir.mkdir(parents=True, exist_ok=True)
+    return file_dir / file_name
 
 COMPANIES_CSV = get_path(DIR_DATA, "companies.csv")
 APP_FILE = get_path(DIR_APP, "app.py")
