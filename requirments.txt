@@ -1,0 +1,9 @@
+yfinance
+requests_cache
+requests_ratelimiter
+pyspark
+streamlit
+pandas
+matplotlib
+plotly
+seaborn

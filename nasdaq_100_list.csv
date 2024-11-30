@@ -1,0 +1,102 @@
+﻿Ticker;Company;Industry;Sector
+AAPL;Apple Inc.;Consumer Electronics;Technology
+NVDA;NVIDIA Corporation;Semiconductors;Technology
+MSFT;Microsoft Corporation;Software - Infrastructure;Technology
+GOOG;Alphabet Inc.;Internet Content & Information;Communication Services
+GOOGL;Alphabet Inc.;Internet Content & Information;Communication Services
+AMZN;Amazon.com, Inc.;Internet Retail;Consumer Discretionary
+META;Meta Platforms, Inc.;Internet Content & Information;Communication Services
+TSLA;Tesla, Inc.;Auto Manufacturers;Consumer Discretionary
+AVGO;Broadcom Inc.;Semiconductors;Technology
+COST;Costco Wholesale Corporation;Discount Stores;Consumer Staples
+NFLX;Netflix, Inc.;Entertainment;Communication Services
+ASML;ASML Holding N.V.;Semiconductor Equipment & Materials;Technology
+TMUS;T-Mobile US, Inc.;Telecom Services;Communication Services
+AMD;Advanced Micro Devices, Inc.;Semiconductors;Technology
+PEP;PepsiCo, Inc.;Beverages - Non-Alcoholic;Consumer Staples
+AZN;AstraZeneca PLC;Drug Manufacturers - General;Healthcare
+LIN;Linde plc;Specialty Chemicals;Materials
+CSCO;Cisco Systems, Inc.;Communication Equipment;Technology
+ADBE;Adobe Inc.;Software - Infrastructure;Technology
+QCOM;QUALCOMM Incorporated;Semiconductors;Technology
+TXN;Texas Instruments Incorporated;Semiconductors;Technology
+ISRG;Intuitive Surgical, Inc.;Medical Instruments & Supplies;Healthcare
+INTU;Intuit Inc.;Software - Application;Technology
+AMGN;Amgen Inc.;Drug Manufacturers - General;Healthcare
+PDD;PDD Holdings Inc.;Internet Retail;Consumer Discretionary
+CMCSA;Comcast Corporation;Telecom Services;Communication Services
+AMAT;Applied Materials, Inc.;Semiconductor Equipment & Materials;Technology
+ARM;Arm Holdings plc;Semiconductors;Technology
+BKNG;Booking Holdings Inc.;Travel Services;Consumer Discretionary
+HON;Honeywell International Inc.;Conglomerates;Industrials
+VRTX;Vertex Pharmaceuticals Incorporated;Biotechnology;Healthcare
+MU;Micron Technology, Inc.;Semiconductors;Technology
+PANW;Palo Alto Networks, Inc.;Software - Infrastructure;Technology
+ADP;Automatic Data Processing, Inc.;Software - Application;Technology
+ADI;Analog Devices, Inc.;Semiconductors;Technology
+GILD;Gilead Sciences, Inc.;Drug Manufacturers - General;Healthcare
+SBUX;Starbucks Corporation;Restaurants;Consumer Discretionary
+MELI;MercadoLibre, Inc.;Internet Retail;Consumer Discretionary
+REGN;Regeneron Pharmaceuticals, Inc.;Biotechnology;Healthcare
+LRCX;Lam Research Corporation;Semiconductor Equipment & Materials;Technology
+INTC;Intel Corporation;Semiconductors;Technology
+MDLZ;Mondelez International, Inc.;Confectioners;Consumer Staples
+KLAC;KLA Corporation;Semiconductor Equipment & Materials;Technology
+ABNB;Airbnb, Inc.;Travel Services;Consumer Discretionary
+CTAS;Cintas Corporation;Specialty Business Services;Industrials
+PYPL;PayPal Holdings, Inc.;Credit Services;Financials
+CEG;Constellation Energy Corporation;Utilities - Renewable;Utilities
+SNPS;Synopsys, Inc.;Software - Infrastructure;Technology
+MAR;Marriott International, Inc.;Lodging;Consumer Discretionary
+CRWD;CrowdStrike Holdings, Inc.;Software - Infrastructure;Technology
+MRVL;Marvell Technology, Inc.;Semiconductors;Technology
+CDNS;Cadence Design Systems, Inc.;Software - Application;Technology
+ORLY;O'Reilly Automotive, Inc.;Specialty Retail;Consumer Discretionary
+CSX;CSX Corporation;Railroads;Industrials
+DASH;DoorDash, Inc.;Internet Content & Information;Communication Services
+WDAY;Workday, Inc.;Software - Application;Technology
+NXPI;NXP Semiconductors N.V.;Semiconductors;Technology
+ADSK;Autodesk, Inc.;Software - Application;Technology
+FTNT;Fortinet, Inc.;Software - Infrastructure;Technology
+TTD;The Trade Desk, Inc.;Software - Application;Technology
+ROP;Roper Technologies, Inc.;Software - Application;Technology
+PCAR;PACCAR Inc;Farm & Heavy Construction Machinery;Industrials
+FANG;Diamondback Energy, Inc.;Oil & Gas Exploration & Production;Energy
+MNST;Monster Beverage Corporation;Beverages - Non-Alcoholic;Consumer Staples
+AEP;American Electric Power Company, Inc.;Utilities - Regulated Electric;Utilities
+PAYX;Paychex, Inc.;Software - Application;Technology
+CPRT;Copart, Inc.;Specialty Business Services;Industrials
+TEAM;Atlassian Corporation;Software - Application;Technology
+CHTR;Charter Communications, Inc.;Telecom Services;Communication Services
+ROST;Ross Stores, Inc.;Apparel Retail;Consumer Discretionary
+KDP;Keurig Dr Pepper Inc.;Beverages - Non-Alcoholic;Consumer Staples
+FAST;Fastenal Company;Industrial Distribution;Industrials
+DDOG;Datadog, Inc.;Software - Application;Technology
+ODFL;Old Dominion Freight Line, Inc.;Trucking;Industrials
+KHC;The Kraft Heinz Company;Packaged Foods;Consumer Staples
+MCHP;Microchip Technology Incorporated;Semiconductors;Technology
+GEHC;GE HealthCare Technologies Inc.;Health Information Services;Healthcare
+EXC;Exelon Corporation;Utilities - Regulated Electric;Utilities
+EA;Electronic Arts Inc.;Electronic Gaming & Multimedia;Communication Services
+VRSK;Verisk Analytics, Inc.;Consulting Services;Industrials
+LULU;Lululemon Athletica Inc.;Apparel Retail;Consumer Discretionary
+IDXX;IDEXX Laboratories, Inc.;Diagnostics & Research;Healthcare
+BKR;Baker Hughes Company;Oil & Gas Equipment & Services;Energy
+CTSH;Cognizant Technology Solutions Corporation;Information Technology Services;Technology
+CCEP;Coca-Cola Europacific Partners PLC;Beverages - Non-Alcoholic;Consumer Staples
+XEL;Xcel Energy Inc.;Utilities - Regulated Electric;Utilities
+CSGP;CoStar Group, Inc.;Real Estate Services;Real Estate
+ON;ON Semiconductor Corporation;Semiconductors;Technology
+CDW;CDW Corporation;Information Technology Services;Technology
+DXCM;DexCom, Inc.;Medical Devices;Healthcare
+TTWO;Take-Two Interactive Software, Inc.;Electronic Gaming & Multimedia;Communication Services
+ANSS;ANSYS, Inc.;Software - Application;Technology
+ZS;Zscaler, Inc.;Software - Infrastructure;Technology
+BIIB;Biogen Inc.;Drug Manufacturers - General;Healthcare
+ILMN;Illumina, Inc.;Diagnostics & Research;Healthcare
+GFS;GlobalFoundries Inc.;Semiconductors;Technology
+MRNA;Moderna, Inc.;Biotechnology;Healthcare
+MDB;MongoDB, Inc.;Software - Infrastructure;Technology
+WBD;Warner Bros. Discovery, Inc.;Entertainment;Communication Services
+DLTR;Dollar Tree, Inc.;Discount Stores;Consumer Staples
+WBA;Walgreens Boots Alliance, Inc.;Pharmaceutical Retailers;Healthcare
