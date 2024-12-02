@@ -43,11 +43,6 @@ class EnumPeriod(Enum):
             "day": "yyyy-MM-dd"
         }
         return formats[self.value]
-    
-DIR_DATA = "data"
-DIR_SESSION = "session"
-DIR_APP = "app"
-DIR_CACHE = "cache"
 
 def get_path(folder: str, file_name: str) -> Path:
     """
@@ -73,10 +68,17 @@ def get_path(folder: str, file_name: str) -> Path:
     file_dir.mkdir(parents=True, exist_ok=True)
     return file_dir / file_name
 
+DIR_DATA = "data"
+DIR_SESSION = "session"
+DIR_APP = "app"
+DIR_CACHE = "cache"
+DIR_LOG = "log"
+
 COMPANIES_CSV = get_path(DIR_DATA, "companies.csv")
 APP_FILE = get_path(DIR_APP, "app.py")
 SESSION_FILE = get_path(DIR_SESSION, "session.pkl")
 YF_CACHE = get_path(DIR_CACHE, "yf.cache")
+DEBUG_LOG = get_path(DIR_LOG, "debug.log")
 
 APP_NAME = "MyStockApp"
 APP_VERSION = "1.0"

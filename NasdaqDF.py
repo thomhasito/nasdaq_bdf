@@ -4,7 +4,7 @@ from pyspark.sql import functions as F
 from pyspark.sql import DataFrame
 
 from utils.const import ColumnNames
-from Session import Session
+from Session import SessionApp as Session
 from pathlib import Path
 
 class NasdaqDF:    

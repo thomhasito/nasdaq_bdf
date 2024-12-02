@@ -4,7 +4,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql.window import Window
 
 from utils.const import ColumnNames
-from Session import Session
+from Session import SessionApp as Session
 
 class NasdaqAnalysis:
     
@@ -86,16 +86,16 @@ class NasdaqAnalysis:
             logger.error(f"Error inferring data period: {e}")
             return None
 
-    def descriptive_statistics(self):
+    def descriptive_statistics(self) -> DataFrame:
         """
         Display basic descriptive statistics (min, max, mean, standard deviation) for numeric columns.
 
         Returns:
-            None
+            DataFrame: A DataFrame containing descriptive statistics for numeric columns.
         """
         try:
             self.logger.info("Calculating descriptive statistics for numeric columns.")
-            self.stock_df.describe()
+            return self.stock_df.describe()
         except Exception as e:
             self.logger.error(f"Error calculating descriptive statistics: {e}")
 

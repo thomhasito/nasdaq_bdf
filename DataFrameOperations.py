@@ -7,7 +7,7 @@ import logging
 
 from utils.const import ColumnNames, EnumPeriod
 from utils.utils import format_period_column, add_period
-from Session import Session
+from Session import SessionApp as Session
 
 class DataFrameOperations:
     def __init__(self, logger: logging.Logger, stock_df: DataFrame):

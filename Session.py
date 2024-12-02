@@ -10,43 +10,51 @@ from utils.const import APP_NAME, APP_VERSION, YF_CACHE
 class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
     pass
 
-class Session:
+class SessionApp:
     _instance = None
     _app_name = APP_NAME
     _app_version = APP_VERSION
 
     def __init__(self):
-        if Session._instance is not None:
+        if SessionApp._instance is not None:
             raise Exception("App is a singleton! Use App.get_instance() instead.")
         
         self.logger = self._setup_logger()
-        self.logger.info(f"Starting {Session._app_name} version {Session._app_version}")
+        self.logger.info(f"Starting {SessionApp._app_name} version {SessionApp._app_version}")
 
         builder = SparkSession.builder
         assert isinstance(builder, SparkSession.Builder)
-        self.spark = builder.appName(Session._app_name).getOrCreate()
+        self.spark = builder.master("local[*]").config("spark.driver.host", "localhost").appName(SessionApp._app_name).getOrCreate()
         self.spark.sparkContext.setLogLevel("ERROR")
         self.session = self._setup_session()
-        Session._instance = self
+        SessionApp._instance = self
 
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
-            cls._instance = Session()
+            cls._instance = SessionApp()
         return cls._instance
 
     def _setup_logger(self):
-        logger = logging.getLogger(f"{Session._app_name} Logger")
-        logger.setLevel(logging.INFO)
+        logger = logging.getLogger(f"{SessionApp._app_name} Logger")
+        logger.setLevel(logging.DEBUG)  # Set the overall level to DEBUG
+
         if not logger.handlers:
+            # StreamHandler for console (INFO+)
             ch = logging.StreamHandler()
             ch.setLevel(logging.INFO)
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            ch.setFormatter(formatter)
+            console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            ch.setFormatter(console_formatter)
             logger.addHandler(ch)
-    
-        return logger
 
+            # FileHandler for file (DEBUG+)
+            fh = logging.FileHandler('debug.log')  # Save logs to debug.log
+            fh.setLevel(logging.DEBUG)
+            file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            fh.setFormatter(file_formatter)
+            logger.addHandler(fh)
+
+        return logger
 
     def _setup_session(self) -> Session:
         
@@ -57,7 +65,7 @@ class Session:
                     limiter=limiter,
                     bucket_class=bucket_class,
                     cache=backend)
-        session.headers['User-agent'] = f"{Session._app_name}/{Session._app_version} (Windows NT 10.0; Win64; x64)"
+        session.headers['User-agent'] = f"{SessionApp._app_name}/{SessionApp._app_version} (Windows NT 10.0; Win64; x64)"
 
         return session
 
