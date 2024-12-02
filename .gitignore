@@ -271,5 +271,7 @@ spark-warehouse/
 # For SBT
 .jvmopts
 
+http_cache.sqlite
+
 
 # End of https://www.toptal.com/developers/gitignore/api/python,spark
