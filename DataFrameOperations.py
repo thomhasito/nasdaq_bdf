@@ -182,18 +182,18 @@ class DataFrameOperations:
         return return_rate_df.orderBy(F.col("return_rate").desc())
     
 # TODO: Download stock_df
-stock_df = DataFrame # Replace DataFrame with the actual DataFrame
-df_operations = DataFrameOperations(Session.get_instance().get_logger(), stock_df)
-period = EnumPeriod.MONTH
-column = ColumnNames.CLOSE
-df_periodic_change = df_operations.df_periodic_change(period, column)
-df_avg_close = df_operations.avg_open_close_by_period(period)
-df_month_return = df_operations.calculate_return_rate(period, column)
-df_daily_return = df_operations.calculate_daily_return()
-df_highest_daily_return = df_operations.stocks_with_highest_daily_return(df_daily_return)
-df_avg_daily_return = df_operations.avg_daily_return_by_period(period)
-nb_days = 5
-df_mvg_avg = df_operations.calculate_moving_average(ColumnNames.OPEN.value, nb_days)
-df_correlations = df_operations.calculate_correlation_pairs()
-start_date = "2024-01-01"
-df_best_return_rate = df_operations.calculate_best_return_rate(start_date, EnumPeriod.MONTH, ColumnNames.CLOSE)
+# stock_df = DataFrame # Replace DataFrame with the actual DataFrame
+# df_operations = DataFrameOperations(Session.get_instance().get_logger(), stock_df)
+# period = EnumPeriod.MONTH
+# column = ColumnNames.CLOSE
+# df_periodic_change = df_operations.df_periodic_change(period, column)
+# df_avg_close = df_operations.avg_open_close_by_period(period)
+# df_month_return = df_operations.calculate_return_rate(period, column)
+# df_daily_return = df_operations.calculate_daily_return()
+# df_highest_daily_return = df_operations.stocks_with_highest_daily_return(df_daily_return)
+# df_avg_daily_return = df_operations.avg_daily_return_by_period(period)
+# nb_days = 5
+# df_mvg_avg = df_operations.calculate_moving_average(ColumnNames.OPEN.value, nb_days)
+# df_correlations = df_operations.calculate_correlation_pairs()
+# start_date = "2024-01-01"
+# df_best_return_rate = df_operations.calculate_best_return_rate(start_date, EnumPeriod.MONTH, ColumnNames.CLOSE)

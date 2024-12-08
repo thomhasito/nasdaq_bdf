@@ -1,14 +1,14 @@
-import requests_cache
 import logging
-from requests import Session
+from requests import Session as RequestSession
 from requests_cache import CacheMixin, SQLiteCache
 from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
 from pyrate_limiter import Duration, RequestRate, Limiter
 from pyspark.sql import SparkSession
 from utils.const import APP_NAME, APP_VERSION, YF_CACHE
 
-class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
+class CachedLimiterSession(CacheMixin, LimiterMixin, RequestSession):
     pass
+
 
 class Session:
     _instance = None
@@ -18,13 +18,13 @@ class Session:
     def __init__(self):
         if Session._instance is not None:
             raise Exception("App is a singleton! Use App.get_instance() instead.")
-        
+
         self.logger = self._setup_logger()
         self.logger.info(f"Starting {Session._app_name} version {Session._app_version}")
 
         builder = SparkSession.builder
         assert isinstance(builder, SparkSession.Builder)
-        self.spark = builder.appName(Session._app_name).getOrCreate()
+        self.spark = builder.appName(Session._app_name).master("local[4]").getOrCreate()
         self.spark.sparkContext.setLogLevel("ERROR")
         self.session = self._setup_session()
         Session._instance = self
@@ -41,30 +41,32 @@ class Session:
         if not logger.handlers:
             ch = logging.StreamHandler()
             ch.setLevel(logging.INFO)
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
             ch.setFormatter(formatter)
             logger.addHandler(ch)
-    
+
         return logger
 
+    def _setup_session(self) -> RequestSession:
 
-    def _setup_session(self) -> Session:
-        
-        limiter = Limiter(RequestRate(10, Duration.SECOND*5))
+        limiter = Limiter(RequestRate(10, Duration.SECOND * 5))
         bucket_class = MemoryQueueBucket
         backend = SQLiteCache(YF_CACHE)
         session = CachedLimiterSession(
-                    limiter=limiter,
-                    bucket_class=bucket_class,
-                    cache=backend)
-        session.headers['User-agent'] = f"{Session._app_name}/{Session._app_version} (Windows NT 10.0; Win64; x64)"
+            limiter=limiter, bucket_class=bucket_class, cache=backend
+        )
+        session.headers["User-agent"] = (
+            f"{Session._app_name}/{Session._app_version} (Windows NT 10.0; Win64; x64)"
+        )
 
         return session
 
     def get_logger(self) -> logging.Logger:
         return self.logger
 
-    def get_session(self) -> Session:
+    def get_request_session(self) -> RequestSession:
         return self.session
 
     def get_spark_session(self) -> SparkSession:

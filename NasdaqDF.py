@@ -1,17 +1,18 @@
 import yfinance as yf
 from pyspark.sql.types import StructType, StructField, StringType, DateType, FloatType, IntegerType
 from pyspark.sql import functions as F
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, SparkSession
+from logging import Logger
+from requests import Session as RequestSesssion
 
 from utils.const import ColumnNames
-from Session import Session
 from pathlib import Path
 
 class NasdaqDF:    
-    def __init__(self, csv_path: Path, analysis_period: str):
-        self.spark = Session.get_instance().get_spark_session()
-        self.logger = Session.get_instance().get_logger()
-        self.session = Session.get_instance().get_session()
+    def __init__(self, spark: SparkSession, logger: Logger, req_session: RequestSesssion, csv_path: Path, analysis_period: str):
+        self.spark = spark
+        self.logger = logger
+        self.session = req_session
 
         self.list_nasdaq_path = str(csv_path)
         self.stock_schema = self._define_stock_schema()
@@ -71,6 +72,7 @@ class NasdaqDF:
             return nasdaq_df
 
     def _download_single_ticker(self, ticker: str) -> DataFrame:
+        self.logger.info(f"Downloading ticker {ticker} ...")
         stock_data = None
         try:
             stock_data = yf.download(ticker, period=self.analysis_period, rounding=True, session=self.session, progress=False)
@@ -99,13 +101,18 @@ class NasdaqDF:
                 self.logger.warning(f"Found {nan_count} NaN values in the data for ticker: {ticker} at date: {stock_data['Date']}")
             return stock_data  
 
-    def load_stock_df(self):
-        """Download data for all tickers with error handling and timeout."""
-        self.logger.info("Beginning download of stock Dataframe")
+    def load_stocks_df(self, tickers = []):
+        """
+        Download data for all tickers with error handling and timeout. 
+        Can also additionnaly only download specified tickers to speed up downloading.
+        """
+        ttickers = tickers if len(tickers) > 0 else self.tickers
+
+        self.logger.info(f"Beginning download of {len(ttickers)} tickers")
         stock_df = None
         combined_rdd = self.spark.sparkContext.emptyRDD()
         try:
-            for ticker in self.tickers:
+            for ticker in ttickers:
                 data = self._download_single_ticker(ticker)
                 if data is not None:
                     rows = [tuple(row) for row in data.to_numpy()]

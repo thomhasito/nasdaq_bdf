@@ -6,8 +6,10 @@ from requests_cache import CacheMixin, SQLiteCache
 from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
 from pyrate_limiter import Duration, RequestRate, Limiter
 
-from pyspark.sql import SparkSession
-from utils.const import APP_NAME, APP_VERSION, YF_CACHE
+from pyspark.sql import SparkSession, DataFrame
+from NasdaqDF import NasdaqDF
+
+from utils.const import APP_NAME, APP_VERSION, YF_CACHE, COMPANIES_CSV
 
 
 @st.cache_resource(show_spinner=False)
@@ -17,9 +19,8 @@ def get_pyspark_session() -> SparkSession:
     """
     builder = SparkSession.builder
     assert isinstance(builder, SparkSession.Builder)
-    spark = builder.appName(APP_NAME).getOrCreate()
+    spark = builder.appName(APP_NAME).master("local[4]").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
-
     return spark
 
 
@@ -54,3 +55,41 @@ def get_request_session() -> RequestSession:
     session.headers["User-agent"] = (
         f"{APP_NAME}/{APP_VERSION} (Windows NT 10.0; Win64; x64)"
     )
+    return session
+
+
+@st.cache_resource(show_spinner=False)
+def get_stocks_df(time_window: str, tickers=[]) -> DataFrame:
+    """
+    Retourne le dataframe de stock
+    """
+    nasdaq = NasdaqDF(
+        get_pyspark_session(),
+        get_logger(),
+        get_request_session(),
+        COMPANIES_CSV,
+        time_window,
+    )
+
+    with st.spinner("Chargement des données d'entreprise"):
+        companies = nasdaq.load_companies_df()
+
+    with st.spinner("Chargement des données de stock (peut prendre du temps)"):
+        stocks = nasdaq.load_stocks_df(tickers=tickers)
+
+    with st.spinner("Chargement des DataFrames"):
+        dfs = nasdaq.merge_dataframes(stocks, companies)
+
+    dfs.cache()  # garde une copie du DF en cache dans la mémoire, pour accélérer les choses
+
+    return dfs
+
+
+@st.cache_resource(show_spinner=False)
+def get_company_info():
+    nasdaq = NasdaqDF(
+        get_pyspark_session(), get_logger(), get_request_session(), COMPANIES_CSV, "1d"
+    )
+    companies = nasdaq.load_companies_df()
+    companies.cache()
+    return companies

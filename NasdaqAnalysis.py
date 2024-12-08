@@ -5,12 +5,13 @@ from pyspark.sql.window import Window
 
 from utils.const import ColumnNames
 from Session import Session
+from logging import Logger 
 
 class NasdaqAnalysis:
     
-    def __init__(self, stock_df: DataFrame):
+    def __init__(self, logger: Logger, stock_df: DataFrame):
         self.stock_df = stock_df
-        self.logger = Session.get_instance().get_logger()
+        self.logger = logger
 
     def display_stock_bounds(self, ticker: str, num_rows: int = 40) -> None:
         """
@@ -45,10 +46,10 @@ class NasdaqAnalysis:
         """
         try:
             total_count = self.stock_df.count()
-            self.logger.info(f"Total observations: {total_count}")
+            # self.logger.info(f"Total observations: {total_count}")
             return total_count
         except Exception as e:
-            self.logger.error(f"Error counting observations: {e}")
+            # self.logger.error(f"Error counting observations: {e}")
             return None
 
     def deduce_data_period(self):
@@ -136,12 +137,12 @@ class NasdaqAnalysis:
             return {}
         
 # TODO: Download stock_df
-stock_df = DataFrame # Replace DataFrame with the actual DataFrame
-analysis = NasdaqAnalysis(stock_df)
-ticker = 'AAPL'
-analysis.display_stock_bounds(ticker)
-nb_count = analysis.count_observations()
-dict_period = analysis.deduce_data_period()
-df_stats = analysis.descriptive_statistics()
-missing_df = analysis.count_missing_values()
-correlations = analysis.calculate_correlation()
+# stock_df = DataFrame # Replace DataFrame with the actual DataFrame
+# analysis = NasdaqAnalysis(stock_df)
+# ticker = 'AAPL'
+# analysis.display_stock_bounds(ticker)
+# nb_count = analysis.count_observations()
+# dict_period = analysis.deduce_data_period()
+# df_stats = analysis.descriptive_statistics()
+# missing_df = analysis.count_missing_values()
+# correlations = analysis.calculate_correlation()
