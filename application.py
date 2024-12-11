@@ -13,10 +13,11 @@ os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
 # choisir le layout wide pour prendre tout l'espace disponible sur l'écran
 set_page_config(layout="wide")
 
-main_view = Page("app/main_view.py", title="Vue principale", icon="💹")
+main_view = Page("app/main_view.py", title="Dashboard", icon="📊")
+roi_finder = Page("app/roi_finder.py", title="Recherche de stocks profitables", icon="🔍")
 
 # liste des pages de l'application streamlit
-nav = navigation([main_view])
+nav = navigation([main_view, roi_finder])
 nav.run()
 
 

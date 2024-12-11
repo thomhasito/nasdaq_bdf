@@ -77,8 +77,7 @@ def get_stocks_df(time_window: str, tickers=[]) -> DataFrame:
     with st.spinner("Chargement des données de stock (peut prendre du temps)"):
         stocks = nasdaq.load_stocks_df(tickers=tickers)
 
-    with st.spinner("Chargement des DataFrames"):
-        dfs = nasdaq.merge_dataframes(stocks, companies)
+    dfs = nasdaq.merge_dataframes(stocks, companies)
 
     dfs.cache()  # garde une copie du DF en cache dans la mémoire, pour accélérer les choses
 

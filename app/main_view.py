@@ -43,12 +43,18 @@ with st.container(border=True):
         selected_tickers = st.multiselect(
             label="Tickers",
             options=tickers,
+            default=(
+                st.session_state["selected_tickers"]
+                if "selected_tickers" in st.session_state
+                else []
+            ),
             format_func=lambda x: f"{x} - {company_names[x]}",
+            key="selected_tickers",
         )
 
 # pas la peine de tout process si aucun ticker n'est séléctionné
 if len(selected_tickers) == 0:
-    st.write("Please select at least one ticker")
+    st.write("Séléctionnez au moins un ticker dans la liste")
     st.stop()
 
 # stocks
@@ -90,39 +96,41 @@ for t_idx, ticker in enumerate(selected_tickers):
             key=ticker,
         )
 
-        opening_stats = stock_values.agg(
-            F.min("Open").alias("min_open"),
-            F.max("Open").alias("max_open"),
-            F.mean("Open").alias("mean_open"),
-        ).collect()[0]
-
-        closing_stats = stock_values.agg(
-            F.min("Close").alias("min_close"),
-            F.max("Close").alias("max_close"),
-            F.mean("Close").alias("mean_close"),
-        ).collect()[0]
+        stats = (
+            stock_values.agg(
+                F.min("Open").alias("min_open"),
+                F.max("Open").alias("max_open"),
+                F.mean("Open").alias("mean_open"),
+                F.min("Close").alias("min_close"),
+                F.max("Close").alias("max_close"),
+                F.mean("Close").alias("mean_close"),
+            )
+            .collect()[0]
+            .asDict()
+        )
 
         ticker_a, ticker_b = st.columns(2, gap="medium")
 
         with ticker_a:
             with st.container(border=True):
-                st.subheader("Opening")
-                st.write(f"Max: {round(opening_stats['max_open'])}")
-                st.write(f"Min: {round(opening_stats['min_open'])}")
-                st.write(f"Mean: {round(opening_stats['mean_open'])}")
-
-                st.subheader("Closing")
-                st.write(f"Max: {round(closing_stats['max_close'])}")
-                st.write(f"Min: {round(closing_stats['min_close'])}")
-                st.write(f"Mean: {round(closing_stats['mean_close'])}")
+                st.table(
+                    pd.DataFrame(
+                        {
+                            "Min": [stats["min_open"], stats["min_close"]],
+                            "Max": [stats["max_open"], stats["max_close"]],
+                            "Mean": [stats["mean_open"], stats["mean_close"]],
+                        },
+                        index=["Open", "Close"],
+                    )
+                )
 
         with ticker_b:
             with st.container(border=True):
-                st.subheader("Retour sur investissement (%)")
+                st.subheader("Rendement {} (%)".format("quotidien" if roi_time_window == EnumPeriod.DAY else "hebdomadaire"))
                 st.plotly_chart(
                     pltg.Figure(
                         pltg.Scatter(
-                            y=roi_pd["avg_daily_return"] * 100,
+                            y=roi_pd["avg_daily_return"],
                             x=roi_pd[
                                 (
                                     "day_period"
