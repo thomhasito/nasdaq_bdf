@@ -167,7 +167,10 @@ class DataFrameOperations:
 
         return self.stock_df.groupBy(
             ColumnNames.TICKER.value, period_col.alias(f"{period.value}_period")
-        ).agg(round(F.avg("daily_return"), 4).alias("avg_daily_return"))
+        ).agg(
+            round(F.avg("daily_return"), 4).alias("avg_daily_return"),
+            F.stddev("daily_return").alias("return_dev"),
+        )
 
     def stocks_with_highest_daily_return(
         self,

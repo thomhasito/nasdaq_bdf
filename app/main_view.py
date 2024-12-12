@@ -78,7 +78,7 @@ for t_idx, ticker in enumerate(selected_tickers):
 
         # pour plotly
         stock_pd = stock_values.select(
-            "Date", "Open", "High", "Low", "Close"
+            "Date", "Open", "High", "Low", "Close", "Volume"
         ).toPandas()
         roi_pd = return_rates.filter(return_rates["Ticker"] == ticker).toPandas()
 
@@ -101,6 +101,9 @@ for t_idx, ticker in enumerate(selected_tickers):
                 F.min("Open").alias("min_open"),
                 F.max("Open").alias("max_open"),
                 F.mean("Open").alias("mean_open"),
+                F.min("High").alias("min_high"),
+                F.max("High").alias("max_high"),
+                F.mean("High").alias("mean_high"),
                 F.min("Close").alias("min_close"),
                 F.max("Close").alias("max_close"),
                 F.mean("Close").alias("mean_close"),
@@ -109,28 +112,111 @@ for t_idx, ticker in enumerate(selected_tickers):
             .asDict()
         )
 
-        ticker_a, ticker_b = st.columns(2, gap="medium")
+        with st.container(border=True):
 
-        with ticker_a:
-            with st.container(border=True):
-                st.table(
-                    pd.DataFrame(
-                        {
-                            "Min": [stats["min_open"], stats["min_close"]],
-                            "Max": [stats["max_open"], stats["max_close"]],
-                            "Mean": [stats["mean_open"], stats["mean_close"]],
-                        },
-                        index=["Open", "Close"],
+            tab_graphes, tab_tableau, tab_sharpe = st.tabs(
+                ["Rendement / Volume", "Stats", "Ratio de sharpe"]
+            )
+
+            with tab_graphes:
+                ticker_a, ticker_b = st.columns(2, gap="medium")
+
+                with ticker_a:
+                    with st.container(border=False):
+                        st.subheader("Volume", help="Volume d'actions vendues")
+                        st.text("TODO: Réparer l'échelle du tableau de volume")
+                        st.plotly_chart(
+                            pltg.Figure(
+                                pltg.Scatter(
+                                    y=stock_pd["Volume"],
+                                    x=stock_pd["Date"],
+                                ),
+                                layout={"autosize": True, "xaxis": {"dtick": "W1"}},
+                            )
+                        )
+
+                with ticker_b:
+                    with st.container(border=False):
+                        st.subheader(
+                            "Rendement {} (%)".format(
+                                "quotidien"
+                                if roi_time_window == EnumPeriod.DAY
+                                else "hebdomadaire"
+                            ),
+                            help="Rendement de l'action",
+                        )
+                        st.plotly_chart(
+                            pltg.Figure(
+                                pltg.Scatter(
+                                    y=roi_pd["avg_daily_return"],
+                                    x=roi_pd[
+                                        (
+                                            "day_period"
+                                            if roi_time_window == EnumPeriod.DAY
+                                            else "week_period"
+                                        )
+                                    ],
+                                )
+                            )
+                        )
+
+            with tab_tableau:
+                ticker_a, ticker_b = st.columns(2, gap="medium")
+                with ticker_a:
+                    st.subheader("Stats")
+                    st.table(
+                        pd.DataFrame(
+                            {
+                                "Min": [
+                                    stats["min_open"],
+                                    stats["min_close"],
+                                    stats["min_high"],
+                                ],
+                                "Max": [
+                                    stats["max_open"],
+                                    stats["max_close"],
+                                    stats["max_high"],
+                                ],
+                                "Mean": [
+                                    stats["mean_open"],
+                                    stats["mean_close"],
+                                    stats["mean_high"],
+                                ],
+                            },
+                            index=["Open", "Close", "High"],
+                        )
                     )
-                )
 
-        with ticker_b:
-            with st.container(border=True):
-                st.subheader("Rendement {} (%)".format("quotidien" if roi_time_window == EnumPeriod.DAY else "hebdomadaire"))
+                with ticker_b:
+                    st.subheader(
+                        "Volatilité (écart-type)",
+                        help="Indique la volatilité du rendement de l'action. Une volatilité trop grande porte un risque a l'investissement",
+                    )
+                    st.plotly_chart(
+                        pltg.Figure(
+                            pltg.Scatter(
+                                y=roi_pd["return_dev"],
+                                x=roi_pd[
+                                    (
+                                        "day_period"
+                                        if roi_time_window == EnumPeriod.DAY
+                                        else "week_period"
+                                    )
+                                ],
+                            )
+                        ),
+                    )
+
+            with tab_sharpe:
+                st.subheader(
+                    "Ratio de Sharpe",
+                    help="Ratio permettant d'évaluer un investissement. Un ratio inférieur à 0.5 est mauvais; 0.5 à 1 correct et supérieur à 1 bon.",
+                )
+                sharp = (roi_pd["avg_daily_return"] - 0.096) / roi_pd["return_dev"]
                 st.plotly_chart(
                     pltg.Figure(
                         pltg.Scatter(
-                            y=roi_pd["avg_daily_return"],
+                            y=sharp,
                             x=roi_pd[
                                 (
                                     "day_period"
@@ -139,5 +225,5 @@ for t_idx, ticker in enumerate(selected_tickers):
                                 )
                             ],
                         )
-                    )
+                    ),
                 )
