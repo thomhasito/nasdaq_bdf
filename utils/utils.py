@@ -58,13 +58,15 @@ def add_period(start_date: str, period: EnumPeriod, amount: int) -> str:
         new_year = date_obj.year + (date_obj.month + amount - 1) // 12
         last_day_of_new_month = calendar.monthrange(new_year, new_month)[1]
         new_day = min(date_obj.day, last_day_of_new_month)
-        new_date = date_obj.replace(year=new_year, month=new_month, day=new_day)
+        new_date = date_obj.replace(
+            year=new_year, month=new_month, day=new_day)
     elif period == EnumPeriod.QUARTER:
         new_month = (date_obj.month + amount * 3 - 1) % 12 + 1
         new_year = date_obj.year + (date_obj.month + amount * 3 - 1) // 12
         last_day_of_new_month = calendar.monthrange(new_year, new_month)[1]
         new_day = min(date_obj.day, last_day_of_new_month)
-        new_date = date_obj.replace(year=new_year, month=new_month, day=new_day)
+        new_date = date_obj.replace(
+            year=new_year, month=new_month, day=new_day)
     elif period == EnumPeriod.YEAR:
         new_date = date_obj.replace(year=date_obj.year + amount)
     else:
@@ -81,5 +83,5 @@ def period_to_yf_time_frame(date: EnumPeriod) -> str:
         EnumPeriod.QUARTER: "3mo",
         EnumPeriod.YEAR: "1y",
     }
-    
+
     return analyse_date_mapping[date] if date in analyse_date_mapping else "5d"

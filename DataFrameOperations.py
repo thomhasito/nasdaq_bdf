@@ -29,7 +29,8 @@ class DataFrameOperations:
             daily_change_df = self.stock_df.withColumn(
                 f"daily_change_{column.value}",
                 round(
-                    F.col(column.value) - F.lag(column.value, 1).over(window_spec), 2
+                    F.col(column.value) -
+                    F.lag(column.value, 1).over(window_spec), 2
                 ),
             )
             return daily_change_df.select(
@@ -42,7 +43,8 @@ class DataFrameOperations:
 
         return (
             self.stock_df.groupBy(
-                ColumnNames.TICKER.value, period_col.alias(f"{period.value}_period")
+                ColumnNames.TICKER.value, period_col.alias(
+                    f"{period.value}_period")
             )
             .agg(
                 F.first(column.value).alias(f"first_{column.value}"),
@@ -51,7 +53,8 @@ class DataFrameOperations:
             .withColumn(
                 f"{period.value}_change_{column.value}",
                 round(
-                    F.col(f"last_{column.value}") - F.col(f"first_{column.value}"), 2
+                    F.col(f"last_{column.value}") -
+                    F.col(f"first_{column.value}"), 2
                 ),
             )
             .select(
@@ -69,7 +72,8 @@ class DataFrameOperations:
         period_col = format_period_column(period, ColumnNames.DATE.value)
 
         return self.stock_df.groupBy(
-            ColumnNames.TICKER.value, period_col.alias(f"{period.value}_period")
+            ColumnNames.TICKER.value, period_col.alias(
+                f"{period.value}_period")
         ).agg(
             round(F.avg(ColumnNames.OPEN.value), 2).alias("avg_open"),
             round(F.avg(ColumnNames.CLOSE.value), 2).alias("avg_close"),
@@ -107,7 +111,8 @@ class DataFrameOperations:
 
         return_rate_df = (
             self.stock_df.groupBy(
-                ColumnNames.TICKER.value, period_col.alias(f"{period.value}_period")
+                ColumnNames.TICKER.value, period_col.alias(
+                    f"{period.value}_period")
             )
             .agg(
                 F.first(column.value).alias(f"first_{column.value}"),
@@ -117,7 +122,8 @@ class DataFrameOperations:
                 f"{period.value}_return_rate",
                 F.round(
                     (
-                        (F.col(f"last_{column.value}") - F.col(f"first_{column.value}"))
+                        (F.col(f"last_{column.value}") -
+                         F.col(f"first_{column.value}"))
                         / F.col(f"first_{column.value}")
                     )
                     * 100,
@@ -166,10 +172,20 @@ class DataFrameOperations:
         period_col = format_period_column(period, ColumnNames.DATE.value)
 
         return self.stock_df.groupBy(
-            ColumnNames.TICKER.value, period_col.alias(f"{period.value}_period")
+            ColumnNames.TICKER.value, period_col.alias(
+                f"{period.value}_period")
         ).agg(
             round(F.avg("daily_return"), 4).alias("avg_daily_return"),
             F.stddev("daily_return").alias("return_dev"),
+        )
+
+    def avg_volumes_by_period(self, period: EnumPeriod) -> DataFrame:
+        period_col = format_period_column(period, ColumnNames.DATE.value)
+        return self.stock_df.groupBy(
+            ColumnNames.TICKER.value, period_col.alias(
+                f"{period.value}_period")
+        ).agg(
+            round(F.sum("Volume")).alias("summed_volume")
         )
 
     def stocks_with_highest_daily_return(
@@ -180,16 +196,19 @@ class DataFrameOperations:
     ) -> DataFrame:
         self.logger.info("Finding stocks with the highest daily return.")
 
-        if daily_col not in self.stock_df.columns:
-            self.logger.warning(
-                "daily_return column not found. Calculating daily returns first."
-            )
-            self.calculate_daily_return()
+        # if daily_col not in self.stock_df.columns:
+        #     self.logger.warning(
+        #         "daily_return column not found. Calculating daily returns first."
+        #     )
+        #     self.calculate_daily_return()
 
-        return daily_return_df.orderBy(F.desc(daily_col)).limit(top_n)
+        return daily_return_df.groupBy(
+            ColumnNames.TICKER.value).agg(F.mean(F.col("daily_return"))
+                                          .alias("a_daily_return")).orderBy(F.asc("a_daily_return")).limit(top_n)
 
     def calculate_moving_average(self, column: str, num_days: int) -> DataFrame:
-        self.logger.info(f"Calculating moving average on {num_days} days period.")
+        self.logger.info(
+            f"Calculating moving average on {num_days} days period.")
 
         moving_avg_window = (
             Window.partitionBy(ColumnNames.TICKER.value)
@@ -201,12 +220,14 @@ class DataFrameOperations:
         return self.stock_df.withColumn(
             f"{column}_moving_avg_{num_days}_days",
             F.when(
-                count_col == num_days, F.avg(F.col(column)).over(moving_avg_window)
+                count_col == num_days, F.avg(
+                    F.col(column)).over(moving_avg_window)
             ).otherwise(None),
         )
 
     def calculate_correlation_pairs(self) -> DataFrame:
-        self.logger.info("Calculating correlations between all possible ticker pairs.")
+        self.logger.info(
+            "Calculating correlations between all possible ticker pairs.")
 
         if "daily_return" not in self.stock_df.columns:
             self.logger.warning(
@@ -238,7 +259,8 @@ class DataFrameOperations:
         period_col = format_period_column(period, ColumnNames.DATE.value)
         return_df = (
             self.stock_df.groupBy(
-                ColumnNames.TICKER.value, period_col.alias(f"{period.value}_period")
+                ColumnNames.TICKER.value, period_col.alias(
+                    f"{period.value}_period")
             )
             .agg(
                 F.first(price_column).alias("first_price"),
@@ -291,6 +313,14 @@ class DataFrameOperations:
         )
 
         return return_rate_df.orderBy(F.col("return_rate").desc())
+
+    def calc_ad_line(self, return_col: str = "daily_return", volume_col: str = "Volume"):
+        mfm = self.stock_df.withColumn("MFM", ((F.col("Close") - F.col("Low")) - (
+            F.col("High") - F.col("Close"))) / (F.col("High") - F.col("Low")))
+
+        mfv = mfm.withColumn("MFV", F.col("MFM") * F.col("Volume"))
+
+        return mfv.withColumn("AD_line", F.sum("MFV").over(Window.orderBy("Date")))
 
 
 # TODO: Download stock_df

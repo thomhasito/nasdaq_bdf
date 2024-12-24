@@ -19,7 +19,7 @@ def get_pyspark_session() -> SparkSession:
     """
     builder = SparkSession.builder
     assert isinstance(builder, SparkSession.Builder)
-    spark = builder.appName(APP_NAME).master("local[4]").getOrCreate()
+    spark = builder.appName(APP_NAME).master("local[8]").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
     return spark
 

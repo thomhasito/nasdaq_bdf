@@ -14,6 +14,7 @@ from utils.utils import period_to_yf_time_frame
 
 st.header("🧠 Insights de trading")
 
+
 companies = get_company_info()
 tickers = companies.select("Ticker").distinct().rdd.flatMap(lambda x: x).collect()
 company_names = {
@@ -26,7 +27,7 @@ with st.container(border=True):
 
     with bar_l:
         time_window = st.pills(
-            "Période d'analyse",
+            "Type de trading",
             options=[
                 EnumPeriod.DAY,
                 EnumPeriod.WEEK,
@@ -51,5 +52,3 @@ with st.container(border=True):
             format_func=lambda x: f"{x} - {company_names[x]}",
             key="selected_tickers",
         )
-
-# rendement journaliers + moyenne mobile

@@ -28,7 +28,7 @@ class NasdaqDF:
             StructField(ColumnNames.HIGH.value, FloatType(), True),
             StructField(ColumnNames.LOW.value, FloatType(), True),
             StructField(ColumnNames.CLOSE.value, FloatType(), True),
-            StructField(ColumnNames.ADJ_CLOSE.value, FloatType(), True),
+            # StructField(ColumnNames.ADJ_CLOSE.value, FloatType(), True),
             StructField(ColumnNames.VOLUME.value, IntegerType(), True)
         ])
 
