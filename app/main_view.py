@@ -85,7 +85,9 @@ operations = DataFrameOperations(get_logger(), ticker_values)
 return_rates = operations.avg_daily_return_by_period(roi_time_window)
 summed_volumes = operations.avg_volumes_by_period(roi_time_window)
 
+# indicateurs + oscillateurs
 ad_line = operations.calc_ad_line()
+rsi = operations.calc_rsi(period=9)
 
 # moyenne mobile sur 3j
 moving_avg = operations.calculate_moving_average("daily_return", 3)
@@ -108,6 +110,9 @@ for t_idx, ticker in enumerate(selected_tickers):
 
     ad_line_pd = ad_line.filter(ad_line["Ticker"] == ticker).toPandas()
 
+    rsi_pd = rsi.filter(rsi["Ticker"] == ticker).toPandas()
+
+    # afficher une emote de hausse si le rendement est positif sinon baisse
     emote_state = "📈" if roi_pd["avg_daily_return"].iloc[-1] > 0. else "📉"
 
     with st.expander("{} - {} {}".format(ticker, company_names[ticker], emote_state), expanded=t_idx == 0):
@@ -142,6 +147,7 @@ for t_idx, ticker in enumerate(selected_tickers):
                 F.min("Low").alias("min_low"),
                 F.max("Low").alias("max_low"),
                 F.mean("Low").alias("mean_low"),
+                F.count("High").alias("total_count")
             )
             .collect()[0]
             .asDict()
@@ -149,9 +155,9 @@ for t_idx, ticker in enumerate(selected_tickers):
 
         with st.container(border=True):
 
-            tab_rmm, tab_graphes, tab_tableau, tabr_entries = st.tabs(
+            tab_rmm, tab_graphes, tab_tableau, tab_rsi, tabr_entries = st.tabs(
                 ["📊 Rendement quo. mobile (3j)",
-                 "📊 Rendement / Volume hebdo.", "🔢 Stats", "〰 A / D Line"]
+                 "📊 Rendement / Volume hebdo.", "🔢 Stats", "RSI (9j)", "〰 A / D Line"]
             )
 
             with tab_graphes:
@@ -242,6 +248,8 @@ for t_idx, ticker in enumerate(selected_tickers):
                             index=["Open", "Close", "High", "Low"],
                         )
                     )
+                    st.markdown("Nombre d'entrées: {}".format(
+                        stats["total_count"]))
 
                 with ticker_b:
                     st.subheader(
@@ -337,9 +345,43 @@ for t_idx, ticker in enumerate(selected_tickers):
                             pltg.Scatter(
                                 y=ad_line_pd["AD_line"],
                                 x=ad_line_pd["Date"]
-                            )
+                            ),
+                            layout={"autosize": True,
+                                    "xaxis": {"dtick": "W1"}}
                         ),
                         key=f"ad_line_{ticker}"
                     )
 
-                    # st.page_link("Accéder au insights pour cette action", icon="🧠", page="app/insights.py")
+                with tab_rsi:
+                    st.subheader("RSI", help="")
+                    with st.popover("Mémo RSI (Cliquez pour ouvrir)"):
+                        st.table({
+                            "Seuil": ["RSI > 70", "RSI < 30", "RSI croise 50 vers le haut", "RSI croise 50 vers le bas"],
+                            "Description": [
+                                "Surachat - L'actif est potentiellement trop acheté et pourrait corriger.",
+                                "Survente - L'actif est potentiellement trop vendu et pourrait rebondir.",
+                                "Transition d'une tendance baissière à une tendance haussière - Signal d'achat potentiel.",
+                                "Transition d'une tendance haussière à une tendance baissière - Signal de vente potentiel."
+                            ],
+                            "Interprétation": [
+                                "Risque de correction ou de retournement à la baisse.",
+                                "Risque de rebond ou de retournement à la hausse.",
+                                "Confirmation du début d'un momentum haussier.",
+                                "Confirmation du début d'un momentum baissier."
+                            ]
+                        })
+
+                    rsi_fig = pltg.Figure(layout={"autosize": True,
+                                                  "xaxis": {"dtick": "W1"}})
+                    rsi_fig.add_scatter(y=rsi_pd["rsi"],
+                                        x=rsi_pd["Date"])
+                    rsi_fig.add_hline(
+                        y=30, line_dash="dot", line_color="red", annotation_text="Survente")
+                    rsi_fig.add_hline(
+                        y=70, line_dash="dot", line_color="red", annotation_text="Surachat")
+                    rsi_fig.add_hline(
+                        y=50, line_dash="dot", line_color="yellow", annotation_text="Neutre")
+                    st.plotly_chart(
+                        rsi_fig,
+                        key=f"rsi_line_{ticker}"
+                    )

@@ -315,12 +315,33 @@ class DataFrameOperations:
         return return_rate_df.orderBy(F.col("return_rate").desc())
 
     def calc_ad_line(self, return_col: str = "daily_return", volume_col: str = "Volume"):
+        """
+            Calcule les valeurs pour tracer les valeurs de l'indicateur A/D line
+        """
         mfm = self.stock_df.withColumn("MFM", ((F.col("Close") - F.col("Low")) - (
             F.col("High") - F.col("Close"))) / (F.col("High") - F.col("Low")))
 
         mfv = mfm.withColumn("MFV", F.col("MFM") * F.col("Volume"))
 
         return mfv.withColumn("AD_line", F.sum("MFV").over(Window.orderBy("Date")))
+
+    def calc_rsi(self, period=4, price_col="Close"):
+        """
+            Calcule les valeurs de l'oscillateur RSI (Relative Strength index)
+        """
+        win = Window.orderBy("Date")
+        avg_win = Window.orderBy("Date").rowsBetween(-(period - 1), 0)
+
+        return (
+            self.stock_df.withColumn("change", F.col(price_col) -
+                                     F.lag(price_col, 1).over(win))
+            .withColumn("gain", F.when(F.col("change") > 0, F.col("change")).otherwise(0))
+            .withColumn("loss", F.when(F.col("change") < 0, -F.col("change")).otherwise(0))
+            .withColumn("avg_gain", F.avg("gain").over(avg_win))
+            .withColumn("avg_loss", F.avg("loss").over(avg_win))
+            .withColumn("rs", F.col("avg_gain") / F.col("avg_loss"))
+            .withColumn("rsi", 100 - (100 / (1 + F.col("rs"))))
+        )
 
 
 # TODO: Download stock_df

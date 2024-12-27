@@ -13,7 +13,8 @@ from DataFrameOperations import DataFrameOperations
 
 st.header("🔍💲 Recherche de stocks profitables")
 
-st.markdown("_TODO: check pk c'est pas dans l'ordre alors que la fx odnne les résultats triés_")
+st.markdown(
+    "_TODO: check pk c'est pas dans l'ordre alors que la fx odnne les résultats triés_")
 
 company_info = get_company_info()
 sectors = company_info.select(
@@ -58,6 +59,9 @@ company_tickers = (
     .collect()
 )
 
+please_wait = st.spinner("Calcul en cours (peut prendre quelques minutes)")
+please_wait.__enter__()
+
 stocks_df = get_stocks_df(
     period_to_yf_time_frame(time_window), company_tickers)
 
@@ -66,8 +70,6 @@ df_ops = DataFrameOperations(get_logger(), stocks_df)
 return_df = df_ops.calculate_daily_return()
 highest_yield = df_ops.stocks_with_highest_daily_return(
     return_df, n_coms).join(company_info.select(["Ticker", "Company"]), on="Ticker")
-
-st.dataframe(highest_yield.toPandas())
 
 # les tickers suivis sur le dashboard
 tracked_tickers = (
@@ -91,7 +93,7 @@ for idx, row in enumerate(highest_yield.distinct().collect()):
             )
 
             roi = round(row["a_daily_return"], 2)
-            st.text(f"Rendement quotidien moyen: {roi}%")
+            st.text(f"Moyenne de rendement sur la période: {roi}%")
             if st.button(
                 "Ajouter aux tickers suivis",
                 key="btn_" + row["Ticker"] + "_" +
