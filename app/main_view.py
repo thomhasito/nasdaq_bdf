@@ -157,7 +157,7 @@ for t_idx, ticker in enumerate(selected_tickers):
 
             tab_rmm, tab_graphes, tab_tableau, tab_rsi, tabr_entries = st.tabs(
                 ["📊 Rendement quo. mobile (3j)",
-                 "📊 Rendement / Volume hebdo.", "🔢 Stats", "RSI (9j)", "〰 A / D Line"]
+                 "📊 Rendement / Volume hebdo.", "🔢 Stats", "🏋️‍♀️ RSI (9j)", "〰 A / D Line"]
             )
 
             with tab_graphes:
@@ -353,7 +353,7 @@ for t_idx, ticker in enumerate(selected_tickers):
                     )
 
                 with tab_rsi:
-                    st.subheader("RSI", help="")
+                    st.subheader("RSI", help="RSI (Relative Strength Index) est un indicateur technique qui mesure la vitesse et l’amplitude des variations de prix pour évaluer si un actif est en surachat ou en survente")
                     with st.popover("Mémo RSI (Cliquez pour ouvrir)"):
                         st.table({
                             "Seuil": ["RSI > 70", "RSI < 30", "RSI croise 50 vers le haut", "RSI croise 50 vers le bas"],
