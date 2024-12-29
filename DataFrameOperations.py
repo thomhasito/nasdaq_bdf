@@ -323,14 +323,15 @@ class DataFrameOperations:
 
         mfv = mfm.withColumn("MFV", F.col("MFM") * F.col("Volume"))
 
-        return mfv.withColumn("AD_line", F.sum("MFV").over(Window.orderBy("Date")))
+        return mfv.withColumn("AD_line", F.sum("MFV").over(Window.partitionBy("Ticker").orderBy("Date")))
 
     def calc_rsi(self, period=4, price_col="Close"):
         """
             Calcule les valeurs de l'oscillateur RSI (Relative Strength index)
         """
-        win = Window.orderBy("Date")
-        avg_win = Window.orderBy("Date").rowsBetween(-(period - 1), 0)
+        win = Window.partitionBy("Ticker").orderBy("Date")
+        avg_win = Window.partitionBy("Ticker").orderBy(
+            "Date").rowsBetween(-(period - 1), 0)
 
         return (
             self.stock_df.withColumn("change", F.col(price_col) -

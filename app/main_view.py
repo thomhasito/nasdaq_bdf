@@ -385,3 +385,4 @@ for t_idx, ticker in enumerate(selected_tickers):
                         rsi_fig,
                         key=f"rsi_line_{ticker}"
                     )
+                    st.dataframe(rsi_pd)
