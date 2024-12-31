@@ -1,9 +1,10 @@
 yfinance
 requests_cache
 requests_ratelimiter
-pyspark
 streamlit
+pyspark==3.5.3
+numpy==1.24.3
 pandas
 matplotlib
-plotly
 seaborn
+plotly
