@@ -308,6 +308,9 @@ if MAX_VALUE < DEFAULT_VALUE:
     DEFAULT_VALUE = MAX_VALUE
 n_coms = st.number_input("Number of results", min_value=MIN_VALUE, max_value=MAX_VALUE, value=DEFAULT_VALUE)
 
+wait_spinner = st.spinner("Calculating... This may take a while depending on the selected / number of selected sectors")
+wait_spinner.__enter__()
+
 # Fetch stock data
 stocks_df = get_stocks_df(period_to_yf_time_frame(time_window), company_tickers)
 
@@ -331,3 +334,5 @@ tracked_tickers = (
 
 # Display ticker cards
 display_ticker_cards(highest_yield_pd, return_df, tracked_tickers)
+
+wait_spinner.__exit__(None, None, None)

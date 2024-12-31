@@ -4,6 +4,12 @@ BALSALOBRE Thomas, ARRIESSE Lucas
 
 ## Installation
 
+Créer un environnement virtuel avec `venv`:
+
+```bash
+python -m venv .venv
+```
+
 Installer toutes les dépendances nécessaires :
 
 ```bash
