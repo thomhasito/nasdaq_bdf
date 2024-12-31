@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as pltg
 import matplotlib.pyplot as plt
 
+from NasdaqAnalysis import NasdaqAnalysis
 from NasdaqDF import NasdaqDF
 from DataFrameOperations import DataFrameOperations
 from app.globals import get_stocks_df, get_company_info, get_logger
@@ -80,6 +81,13 @@ roi_time_window = (
 
 # classe pour les op sur le dataframe
 operations = DataFrameOperations(get_logger(), ticker_values)
+analysis = NasdaqAnalysis(get_logger(), ticker_values)
+
+# déduction de la période des données
+deduced_data_period = analysis.deduce_data_period()
+
+# on affiche le nb de valeurs nulles
+nb_na = analysis.count_missing_values()
 
 # retours sur la période selectionnée + volumes aggrégés
 return_rates = operations.avg_daily_return_by_period(roi_time_window)
@@ -91,6 +99,17 @@ rsi = operations.calc_rsi(period=9)
 
 # moyenne mobile sur 3j
 moving_avg = operations.calculate_moving_average("daily_return", 3)
+
+with st.expander(label="Informations", expanded=True):
+    st.markdown("#### Infos")
+    st.markdown("Période des données: **{} j**".format(
+        deduced_data_period["most_common_period"]))
+    
+    st.markdown("Nombre d'observations totales: **{}**".format(analysis.count_observations()))
+    st.markdown("#### Valeurs nulles")
+    st.dataframe(nb_na.toPandas())
+
+st.divider()
 
 for t_idx, ticker in enumerate(selected_tickers):
 
@@ -248,9 +267,6 @@ for t_idx, ticker in enumerate(selected_tickers):
                             index=["Open", "Close", "High", "Low"],
                         )
                     )
-                    st.markdown("Nombre d'entrées: {}".format(
-                        stats["total_count"]))
-
                 with ticker_b:
                     st.subheader(
                         "Volatilité hebdomadaire (écart-type)",
@@ -353,7 +369,8 @@ for t_idx, ticker in enumerate(selected_tickers):
                     )
 
                 with tab_rsi:
-                    st.subheader("RSI", help="RSI (Relative Strength Index) est un indicateur technique qui mesure la vitesse et l’amplitude des variations de prix pour évaluer si un actif est en surachat ou en survente")
+                    st.subheader(
+                        "RSI", help="RSI (Relative Strength Index) est un indicateur technique qui mesure la vitesse et l’amplitude des variations de prix pour évaluer si un actif est en surachat ou en survente")
                     with st.popover("Mémo RSI (Cliquez pour ouvrir)"):
                         st.table({
                             "Seuil": ["RSI > 70", "RSI < 30", "RSI croise 50 vers le haut", "RSI croise 50 vers le bas"],
@@ -371,18 +388,21 @@ for t_idx, ticker in enumerate(selected_tickers):
                             ]
                         })
 
-                    rsi_fig = pltg.Figure(layout={"autosize": True,
-                                                  "xaxis": {"dtick": "W1"}})
-                    rsi_fig.add_scatter(y=rsi_pd["rsi"],
-                                        x=rsi_pd["Date"])
-                    rsi_fig.add_hline(
-                        y=30, line_dash="dot", line_color="red", annotation_text="Survente")
-                    rsi_fig.add_hline(
-                        y=70, line_dash="dot", line_color="red", annotation_text="Surachat")
-                    rsi_fig.add_hline(
-                        y=50, line_dash="dot", line_color="yellow", annotation_text="Neutre")
-                    st.plotly_chart(
-                        rsi_fig,
-                        key=f"rsi_line_{ticker}"
-                    )
-                    st.dataframe(rsi_pd)
+                    if roi_time_window == EnumPeriod.DAY:
+                        st.markdown(
+                            "❌ RSI non disponible sur une analyse journalière / hebdomadaire")
+                    else:
+                        rsi_fig = pltg.Figure(layout={"autosize": True,
+                                                      "xaxis": {"dtick": "W1"}})
+                        rsi_fig.add_scatter(y=rsi_pd["rsi"],
+                                            x=rsi_pd["Date"])
+                        rsi_fig.add_hline(
+                            y=30, line_dash="dot", line_color="red", annotation_text="Survente")
+                        rsi_fig.add_hline(
+                            y=70, line_dash="dot", line_color="red", annotation_text="Surachat")
+                        rsi_fig.add_hline(
+                            y=50, line_dash="dot", line_color="yellow", annotation_text="Neutre")
+                        st.plotly_chart(
+                            rsi_fig,
+                            key=f"rsi_line_{ticker}"
+                        )

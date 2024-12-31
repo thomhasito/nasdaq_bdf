@@ -13,8 +13,8 @@ from DataFrameOperations import DataFrameOperations
 
 st.header("🔍💲 Recherche de stocks profitables")
 
-st.markdown(
-    "_TODO: check pk c'est pas dans l'ordre alors que la fx odnne les résultats triés_")
+# st.markdown(
+    # "_TODO: check pk c'est pas dans l'ordre alors que la fx odnne les résultats triés_")
 
 company_info = get_company_info()
 sectors = company_info.select(
