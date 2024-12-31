@@ -1,408 +1,235 @@
 import streamlit as st
-from pyspark.sql import DataFrame
-import pyspark.sql.functions as F
 import pandas as pd
-
 import plotly.graph_objects as pltg
-import matplotlib.pyplot as plt
 
-from NasdaqAnalysis import NasdaqAnalysis
-from NasdaqDF import NasdaqDF
-from DataFrameOperations import DataFrameOperations
-from app.globals import get_stocks_df, get_company_info, get_logger
-from utils.const import EnumPeriod
-from utils.utils import period_to_yf_time_frame
+from app.globals import get_stocks_df, get_companies_info, get_companies_df, select_options, display_no_ticker_message
+from utils.utils import period_to_yf_time_frame, convert_to_date
+from utils.const import ColumnNames
 
-st.title("Dashboard des tickers")
 
-companies = get_company_info()
-tickers = companies.select("Ticker").distinct(
-).rdd.flatMap(lambda x: x).collect()
+def create_candlestick_chart(stock_pd: pd.DataFrame, ticker: str, frame_height: int = 600) -> pltg.Figure:
+    """Creates a candlestick chart using Plotly.
 
-company_names = {
-    row["Ticker"]: row["Company"] for row in companies.distinct().collect()
-}
+    Args:
+        stock_pd (pd.DataFrame): Stock data.
+        ticker (str): Ticker symbol.
+        frame_height (int, optional): Height of the chart. Defaults to 600.
 
-# barre principale de séléction des tickers et
-with st.container(border=True):
-    bar_l, bar_r = st.columns(2, gap="medium")
+    Returns:
+        pltg.Figure: Plotly figure object.
+    """
+    fig = pltg.Figure(
+        data=[pltg.Candlestick(
+            x=stock_pd[ColumnNames.DATE.value],
+            open=stock_pd[ColumnNames.OPEN.value],
+            high=stock_pd[ColumnNames.HIGH.value],
+            close=stock_pd[ColumnNames.CLOSE.value],
+            low=stock_pd[ColumnNames.LOW.value],
+            increasing_line_color="green",
+            decreasing_line_color="red",
+            showlegend=False,
+        )],
+        layout={
+            "autosize": True,
+            "xaxis": {
+                "type": "date",
+                "title": "Date",
+                "showgrid": True,
+                "tickformatstops": [
+                    # Show Day-Month-Year for zoomed-in view
+                    {"dtickrange": [None, "M1"], "value": "%d %b %Y"},
+                    # Show Month-Year for mid-range view
+                    {"dtickrange": ["M1", None], "value": "%b %Y"},
+                ],
+                "showline": True,
+                # Enable range slider for zooming in/out
+                "rangeslider": {"visible": True},
+            },
+            "yaxis": {
+                "title": "Stock Price (USD)",
+                "autorange": True,  # Auto-adjust y-axis range
+                "showgrid": True,  # Enable grid for better visualization
+                "tickprefix": "$",
+            },
+            "title": f"Stock Price Trends: {ticker}",
+            "template": "plotly_dark",
+        },
+    )
+    fig.update_layout(height=frame_height)
+    return fig
 
-    with bar_l:
-        time_window = st.pills(
-            "Période d'analyse",
-            options=[
-                EnumPeriod.DAY,
-                EnumPeriod.WEEK,
-                EnumPeriod.MONTH,
-                EnumPeriod.QUARTER,
-                EnumPeriod.YEAR,
-            ],
-            format_func=period_to_yf_time_frame,
-            selection_mode="single",
-            default=EnumPeriod.WEEK,
+
+def display_tabs(stock_pd: pd.DataFrame) -> None:
+    """Displays three tabs: Stats, Info, and History.
+
+    Args:
+        stock_pd (pd.DataFrame): Stock data.
+    """
+    tab_stats, tab_info, tab_history = st.tabs(
+        ["📊 Stats", "ℹ️ Info", "📜 History"])
+
+    # Tab: Stats
+    with tab_stats:
+        st.write("### Descriptive Statistics")
+        numeric_cols = stock_pd.select_dtypes(include=["number"])
+        stats = numeric_cols.describe().T.round(2)
+        stats = stats.map(lambda x: f"{x:.2f}")
+        stats.rename(columns={"50%": "Median"}, inplace=True)
+
+        st.markdown(
+            "<div style='text-align: center; font-weight: bold; color: #4CAF50;'>"
+            "Summary Statistics Table</div>",
+            unsafe_allow_html=True,
+        )
+        st.table(stats[["mean", "std", "min", "25%", "Median", "75%", "max"]])
+
+    # Tab: Info
+    with tab_info:
+        st.write("### Additional Information")
+        count = len(stock_pd)
+
+        date_range_days = (stock_pd[ColumnNames.DATE.value].max(
+        ) - stock_pd[ColumnNames.DATE.value].min()).days + 1
+        all_days_between = pd.date_range(start=stock_pd[ColumnNames.DATE.value].min(
+        ), end=stock_pd[ColumnNames.DATE.value].max())
+        missing_days = 100 * (1 - count / date_range_days)
+
+        not_valid_days = 0  # holidays and weekends
+        CHRISTMAS = "12-25"
+        NEW_YEAR = "01-01"
+        holiday_days = all_days_between.strftime(
+            "%m-%d").isin([CHRISTMAS, NEW_YEAR])  # Christmas and New Year
+        not_valid_days += holiday_days.sum()
+
+        weekend_days = all_days_between.weekday.isin(
+            [5, 6])  # Saturday and Sunday
+        not_valid_days += weekend_days.sum()
+
+        holidays_on_weekends = (holiday_days & weekend_days).sum()
+        # Remove holidays on weekends (counted twice)
+        not_valid_days -= holidays_on_weekends
+        true_missing_days = 100 * \
+            (1 - count / (date_range_days - not_valid_days))
+
+        stock_pd["date_diff"] = stock_pd[ColumnNames.DATE.value].diff().dt.days
+        mean_period = stock_pd["date_diff"].mean()
+        stock_pd.drop(columns=["date_diff"], inplace=True)
+
+        st.markdown(
+            f"<div style='font-weight: bold; color: #2196F3;'>Dataset Insights</div>",
+            unsafe_allow_html=True,
+        )
+        number_of_observations = f"- Number of observations: {count}"
+        percentage_missing_days = (
+            f"- Percentage of missing days: "
+            f"With holidays and weekends: {missing_days:.2f}%, Without (true %): {true_missing_days:.2f}%"
+        )
+        average_period = f"- Average period between points: {mean_period:.2f} days"
+        st.markdown(number_of_observations)
+        st.markdown(percentage_missing_days)
+        st.markdown(average_period)
+
+    # Tab: History
+    with tab_history:
+        st.write("### Historical Data")
+        count = len(stock_pd)
+        default_choices = [5, 10, 20, 40]
+        options = [i if i <= count else count for i in default_choices if i <
+                   count or i == default_choices[-1]]
+        # options will be [5, 10, 20, 40] if count is greater than 40, else it will reach the maximum value of count
+        # Example: if count is 15, options will be [5, 10, 15]
+
+        rows_to_display = st.radio(
+            "Select the number of rows to display:",
+            options=options,
+            index=0,
+            horizontal=True,
+            key=f"rows_to_display_{ticker}",
         )
 
-    with bar_r:
-        selected_tickers = st.multiselect(
-            label="Tickers",
-            options=tickers,
-            default=(
-                st.session_state["selected_tickers"]
-                if "selected_tickers" in st.session_state
-                else []
-            ),
-            format_func=lambda x: f"{x} - {company_names[x]}",
-            key="selected_tickers",
-        )
+        history_df = stock_pd.tail(rows_to_display).sort_values(
+            by=ColumnNames.DATE.value, ascending=False)
+        # Format the date and numeric columns
+        history_df[ColumnNames.DATE.value] = history_df[ColumnNames.DATE.value].dt.strftime(
+            "%Y-%m-%d")
+        for cols in numeric_cols.columns:
+            history_df[cols] = history_df[cols].map(lambda x: f"{x:.2f}")
 
-# pas la peine de tout process si aucun ticker n'est séléctionné
-if len(selected_tickers) == 0:
-    with st.container(border=True):
-        st.write("Séléctionnez au moins un ticker dans la liste")
-        with st.container(border=True):
-            st.page_link(page="app/roi_finder.py",
-                         label="Rechercher des actions profitables", icon="🔍")
+        st.dataframe(history_df, hide_index=True, key=f"history_df_{ticker}")
+
+
+def display_stock_data(fig: pltg.Figure, stock_pd: pd.DataFrame, ticker: str, company_name: str) -> None:
+    """Displays stock data for a given ticker.
+
+    Args:
+        fig (pltg.Figure): Plotly figure object.
+        stock_pd (pd.DataFrame): Stock data.
+        ticker (str): Ticker symbol.
+        company_name (str): Company name.
+
+    Returns:
+        None
+    """
+    emote_state = "📈" if stock_pd[ColumnNames.OPEN.value].iloc[0] < stock_pd[ColumnNames.CLOSE.value].iloc[-1] else "📉"
+    with st.expander(f"{ticker} - {company_name} {emote_state}", expanded=True):
+        st.subheader(f"{ticker} - {company_name} {emote_state}")
+        st.plotly_chart(fig, use_container_width=True,
+                        key=f"plot_candlestick_{ticker}")
+
+        # Display tabs
+        display_tabs(stock_pd)
+
+        # Add link for more insights
+        with st.container():
+            st.markdown("#### More Insights about this ticker")
+            if st.button("🧠 Click for more insights", key=f"insights_button_{ticker}"):
+                st.write("Redirecting to the insights page...")
+                st.page_link("app/insights.py")
+
+
+############################################################## Main View ##########################################################
+st.title("Ticker dashboard")
+
+# get tickers and company names
+companies_df = get_companies_df()
+dict_companies = get_companies_info(companies_df)
+if dict_companies is None:
+    st.error("Failed to load company data. Please try again later.")
     st.stop()
 
+# ticker selection
+selected_tickers, time_window = select_options(dict_companies, "main_view")
+
+# Handle no ticker selected
+if len(selected_tickers) == 0:
+    display_no_ticker_message()
+
 waiting_spinner = st.spinner(
-    "Calcul en cours (peut prendre quelques minutes) ...")
+    "Data is being loaded, please wait... This may take a while if you have selected multiple tickers or one/several sector(s).")
 waiting_spinner.__enter__()
 
 # stocks
 ticker_values = get_stocks_df(
     period_to_yf_time_frame(time_window), selected_tickers)
 
-# période pour le calcul des retours sur période
-roi_time_window = (
-    EnumPeriod.DAY
-    if time_window in [EnumPeriod.WEEK, EnumPeriod.DAY]
-    else EnumPeriod.WEEK
-)
-
-# classe pour les op sur le dataframe
-operations = DataFrameOperations(get_logger(), ticker_values)
-analysis = NasdaqAnalysis(get_logger(), ticker_values)
-
-# déduction de la période des données
-deduced_data_period = analysis.deduce_data_period()
-
-# on affiche le nb de valeurs nulles
-nb_na = analysis.count_missing_values()
-
-# retours sur la période selectionnée + volumes aggrégés
-return_rates = operations.avg_daily_return_by_period(roi_time_window)
-summed_volumes = operations.avg_volumes_by_period(roi_time_window)
-
-# indicateurs + oscillateurs
-ad_line = operations.calc_ad_line()
-rsi = operations.calc_rsi(period=9)
-
-# moyenne mobile sur 3j
-moving_avg = operations.calculate_moving_average("daily_return", 3)
-
-with st.expander(label="Informations", expanded=True):
-    st.markdown("#### Infos")
-    st.markdown("Période des données: **{} j**".format(
-        deduced_data_period["most_common_period"]))
-    
-    st.markdown("Nombre d'observations totales: **{}**".format(analysis.count_observations()))
-    st.markdown("#### Valeurs nulles")
-    st.dataframe(nb_na.toPandas())
-
-st.divider()
-
 for t_idx, ticker in enumerate(selected_tickers):
-
-    # les DF pandas sont pour plotly
-    stock_values = ticker_values.filter(ticker_values["Ticker"] == ticker)
+    # get stock data for the selected ticker and convert to pandas
+    # display the candlestick chart
+    stock_values = ticker_values.filter(
+        ticker_values[ColumnNames.TICKER.value] == ticker)
     stock_pd = stock_values.select(
-        "Date", "Open", "High", "Low", "Close", "Volume"
+        ColumnNames.DATE.value,
+        ColumnNames.OPEN.value,
+        ColumnNames.HIGH.value,
+        ColumnNames.LOW.value,
+        ColumnNames.CLOSE.value,
     ).toPandas()
+    date_series = stock_pd[ColumnNames.DATE.value]
+    stock_pd[ColumnNames.DATE.value] = convert_to_date(date_series)
 
-    mov_pd = moving_avg.filter(moving_avg["Ticker"] == ticker).toPandas()
+    # Create and display the candlestick chart
+    fig = create_candlestick_chart(stock_pd, ticker)
+    company_name = dict_companies[ticker]
+    display_stock_data(fig, stock_pd, ticker=ticker, company_name=company_name)
 
-    svolumes_pd = summed_volumes.filter(
-        summed_volumes["Ticker"] == ticker).toPandas()
-
-    roi_pd = return_rates.filter(
-        return_rates["Ticker"] == ticker).toPandas()
-
-    ad_line_pd = ad_line.filter(ad_line["Ticker"] == ticker).toPandas()
-
-    rsi_pd = rsi.filter(rsi["Ticker"] == ticker).toPandas()
-
-    # afficher une emote de hausse si le rendement est positif sinon baisse
-    emote_state = "📈" if roi_pd["avg_daily_return"].iloc[-1] > 0. else "📉"
-
-    with st.expander("{} - {} {}".format(ticker, company_names[ticker], emote_state), expanded=t_idx == 0):
-        st.subheader("{} - {} {}".format(ticker,
-                                         company_names[ticker], emote_state))
-
-        st.plotly_chart(
-            pltg.Figure(
-                pltg.Candlestick(
-                    x=stock_pd["Date"],
-                    open=stock_pd["Open"],
-                    high=stock_pd["High"],
-                    close=stock_pd["Close"],
-                    low=stock_pd["Low"],
-                ),
-                layout={"autosize": True, "xaxis": {"dtick": "W1"}},
-            ),
-            key=ticker,
-        )
-
-        stats = (
-            stock_values.agg(
-                F.min("Open").alias("min_open"),
-                F.max("Open").alias("max_open"),
-                F.mean("Open").alias("mean_open"),
-                F.min("High").alias("min_high"),
-                F.max("High").alias("max_high"),
-                F.mean("High").alias("mean_high"),
-                F.min("Close").alias("min_close"),
-                F.max("Close").alias("max_close"),
-                F.mean("Close").alias("mean_close"),
-                F.min("Low").alias("min_low"),
-                F.max("Low").alias("max_low"),
-                F.mean("Low").alias("mean_low"),
-                F.count("High").alias("total_count")
-            )
-            .collect()[0]
-            .asDict()
-        )
-
-        with st.container(border=True):
-
-            tab_rmm, tab_graphes, tab_tableau, tab_rsi, tabr_entries = st.tabs(
-                ["📊 Rendement quo. mobile (3j)",
-                 "📊 Rendement / Volume hebdo.", "🔢 Stats", "🏋️‍♀️ RSI (9j)", "〰 A / D Line"]
-            )
-
-            with tab_graphes:
-                ticker_a, ticker_b = st.columns(2, gap="medium")
-
-                if roi_time_window == EnumPeriod.DAY:
-                    st.markdown(
-                        " ❌ __Rendement & Volumes hebdo non disponibles sur une analyse journalière / hebdomadaire__")
-                else:
-                    with ticker_a:
-                        with st.container(border=False):
-                            st.subheader(
-                                "Volume vendu {}".format(
-                                    "quotidien"
-                                    if roi_time_window == EnumPeriod.DAY
-                                    else "hebdomadaire"
-                                ), help="Volume d'actions vendues quotidiennement / hebdomadairement au cours de la période d'analyse")
-                            st.plotly_chart(
-                                pltg.Figure(
-                                    pltg.Scatter(
-                                        y=svolumes_pd["summed_volume"],
-                                        x=svolumes_pd[(
-                                            "day_period"
-                                            if roi_time_window == EnumPeriod.DAY
-                                            else "week_period"
-                                        )],
-                                    ),
-                                    layout={"autosize": True,
-                                            "xaxis": {"dtick": "W1"}},
-                                )
-                            )
-
-                    with ticker_b:
-                        with st.container(border=False):
-                            st.subheader(
-                                "Rendement moyen {} (%)".format(
-                                    "quotidien"
-                                    if roi_time_window == EnumPeriod.DAY
-                                    else "hebdomadaire"
-                                ),
-                                help="Rendement moyen de l'action sur la période d'analyse",
-                            )
-                            fig = pltg.Figure(layout={"autosize": True,
-                                                      "xaxis": {"dtick": "W1"}},)
-                            fig.add_trace(pltg.Scatter(
-                                y=roi_pd["avg_daily_return"],
-                                x=roi_pd[
-                                    (
-                                        "day_period"
-                                        if roi_time_window == EnumPeriod.DAY
-                                        else "week_period"
-                                    )
-                                ],
-                            ))
-
-                            st.plotly_chart(
-                                fig,
-                                key=f"return_{ticker}"
-                            )
-
-            with tab_tableau:
-                ticker_a, ticker_b = st.columns(2, gap="medium")
-                with ticker_a:
-                    st.subheader("Statistiques",
-                                 help="Statistiques sur la période d'analyse")
-                    st.table(
-                        pd.DataFrame(
-                            {
-                                "Min": [
-                                    stats["min_open"],
-                                    stats["min_close"],
-                                    stats["min_high"],
-                                    stats["min_low"],
-                                ],
-                                "Max": [
-                                    stats["max_open"],
-                                    stats["max_close"],
-                                    stats["max_high"],
-                                    stats["max_low"],
-                                ],
-                                "Mean": [
-                                    stats["mean_open"],
-                                    stats["mean_close"],
-                                    stats["mean_high"],
-                                    stats["mean_low"],
-                                ],
-                            },
-                            index=["Open", "Close", "High", "Low"],
-                        )
-                    )
-                with ticker_b:
-                    st.subheader(
-                        "Volatilité hebdomadaire (écart-type)",
-                        help="Indique la volatilité hebdomadaire du rendement quotidien de l'action. Une volatilité trop grande porte un risque a l'investissement",
-                    )
-                    if roi_time_window == EnumPeriod.DAY:
-                        st.markdown(
-                            "❌ Volatilité non disponible sur une analyse journalière / hebdomadaire")
-                    else:
-                        st.plotly_chart(
-                            pltg.Figure(
-                                pltg.Scatter(
-                                    y=roi_pd["return_dev"],
-                                    x=roi_pd[
-                                        (
-                                            "day_period"
-                                            if roi_time_window == EnumPeriod.DAY
-                                            else "week_period"
-                                        )
-                                    ],
-                                ),
-                            ),
-                            key=f"vola_{ticker}"
-                        )
-
-            with tab_rmm:
-                ticker_a, ticker_b = st.columns(2, gap="small")
-
-                with ticker_a:
-                    st.subheader("Volume vendu quotidien",
-                                 help="Volume d'actions vendues quotidiennement")
-                    st.plotly_chart(
-                        pltg.Figure(
-                            pltg.Scatter(
-                                y=mov_pd["Volume"],
-                                x=mov_pd["Date"],
-                            ),
-                            layout={"autosize": True,
-                                    "xaxis": {"dtick": "W1"}}
-                        ),
-                        key=f"{ticker}_vd",
-                    )
-
-                with ticker_b:
-                    st.subheader("Rendement quotidien (moyenne mobile sur 3j)",
-                                 help="Rendement quotidien sur moyenne mobile de 3j")
-                    st.plotly_chart(
-                        pltg.Figure(
-                            pltg.Scatter(
-                                y=mov_pd["daily_return_moving_avg_3_days"] if roi_time_window != EnumPeriod.DAY else roi_pd["avg_daily_return"],
-                                x=mov_pd["Date"] if roi_time_window != EnumPeriod.DAY else roi_pd["day_period"],
-                            ),
-                            layout={"autosize": True,
-                                    "xaxis": {"dtick": "W1"}}
-                        ),
-                        key=f"{ticker}_rmm"
-                    )
-
-                with tabr_entries:
-                    st.subheader(
-                        "A/D Line", help="Mesure la pression d'achat et de vente en combinant les variations de rendement et le volume des transactions")
-                    with st.popover("Mémo A/D line (Cliquez pour ouvrir)"):
-                        st.table({
-                            "Indicateur": [
-                                "Augmentation de l'AD Line",
-                                "Diminution de l'AD Line",
-                                "Divergence haussière",
-                                "Divergence baissière",
-                                "Rendement et AD Line en accord (augmentation)",
-                                "Rendement et AD Line en accord (diminution)"
-                            ],
-                            "Interprétation": [
-                                "Accumulation (plus d'achats)",
-                                "Distribution (plus de ventes)",
-                                "Rendement en baisse, mais AD Line en hausse",
-                                "Rendement en hausse, mais AD Line en baisse",
-                                "Rendement et AD Line augmentent simultanément",
-                                "Rendement et AD Line diminuent simultanément"
-                            ],
-                            "Signification": [
-                                "La pression d'achat est plus forte que la pression de vente, ce qui peut annoncer une tendance haussière.",
-                                "La pression de vente est plus forte que la pression d'achat, ce qui peut annoncer une tendance baissière.",
-                                "Les acheteurs accumulent des positions malgré la baisse des rendement, signalant un potentiel retournement à la hausse.",
-                                "L'absence de pression d'achat malgré la hausse des rendement, ce qui pourrait signaler un affaiblissement de la tendance haussière et une correction. Il est intéressant d'attendre ce signal pour vendre pour faire un profit maximum.",
-                                "Conformité entre le rendement et l'indicateur, confirmant la validité de la tendance haussière. Il est intéressant d'attendre un signal de correction / survente pour vendre afin de faire un profit maximum car la tendance haussière peut continuer",
-                                "Conformité entre le rendement et l'indicateur, confirmant la validité de la tendance baissière. Il est intéressant d'acheter dans ces périodes de tendance baissière."
-                            ]
-                        })
-
-                    st.plotly_chart(
-                        pltg.Figure(
-                            pltg.Scatter(
-                                y=ad_line_pd["AD_line"],
-                                x=ad_line_pd["Date"]
-                            ),
-                            layout={"autosize": True,
-                                    "xaxis": {"dtick": "W1"}}
-                        ),
-                        key=f"ad_line_{ticker}"
-                    )
-
-                with tab_rsi:
-                    st.subheader(
-                        "RSI", help="RSI (Relative Strength Index) est un indicateur technique qui mesure la vitesse et l’amplitude des variations de prix pour évaluer si un actif est en surachat ou en survente")
-                    with st.popover("Mémo RSI (Cliquez pour ouvrir)"):
-                        st.table({
-                            "Seuil": ["RSI > 70", "RSI < 30", "RSI croise 50 vers le haut", "RSI croise 50 vers le bas"],
-                            "Description": [
-                                "Surachat - L'actif est potentiellement trop acheté et pourrait corriger.",
-                                "Survente - L'actif est potentiellement trop vendu et pourrait rebondir.",
-                                "Transition d'une tendance baissière à une tendance haussière - Signal d'achat potentiel.",
-                                "Transition d'une tendance haussière à une tendance baissière - Signal de vente potentiel."
-                            ],
-                            "Interprétation": [
-                                "Risque de correction ou de retournement à la baisse.",
-                                "Risque de rebond ou de retournement à la hausse.",
-                                "Confirmation du début d'un momentum haussier.",
-                                "Confirmation du début d'un momentum baissier."
-                            ]
-                        })
-
-                    if roi_time_window == EnumPeriod.DAY:
-                        st.markdown(
-                            "❌ RSI non disponible sur une analyse journalière / hebdomadaire")
-                    else:
-                        rsi_fig = pltg.Figure(layout={"autosize": True,
-                                                      "xaxis": {"dtick": "W1"}})
-                        rsi_fig.add_scatter(y=rsi_pd["rsi"],
-                                            x=rsi_pd["Date"])
-                        rsi_fig.add_hline(
-                            y=30, line_dash="dot", line_color="red", annotation_text="Survente")
-                        rsi_fig.add_hline(
-                            y=70, line_dash="dot", line_color="red", annotation_text="Surachat")
-                        rsi_fig.add_hline(
-                            y=50, line_dash="dot", line_color="yellow", annotation_text="Neutre")
-                        st.plotly_chart(
-                            rsi_fig,
-                            key=f"rsi_line_{ticker}"
-                        )
+waiting_spinner.__exit__(None, None, None)
