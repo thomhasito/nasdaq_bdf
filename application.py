@@ -14,7 +14,7 @@ os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
 set_page_config(layout="wide")
 
 main_view = Page("app/main_view.py", title="Dashboard", icon="📊")
-roi_finder = Page("app/roi_finder.py", title="Recherche de stocks profitables", icon="🔍")
+roi_finder = Page("app/roi_finder.py", title="Profitable stocks search", icon="🔍")
 insights = Page("app/insights.py", title="Insights", icon="🧠")
 
 # liste des pages de l'application streamlit

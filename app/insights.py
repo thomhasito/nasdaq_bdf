@@ -740,29 +740,30 @@ for t_idx, ticker in enumerate(selected_tickers):
             with tab_ad:
                 st.subheader(
                     "📈 A/D Line", help="Measures buying and selling pressure by combining price changes and transaction volume.")
-
-                # Explanation and table
-                st.markdown("""
-                ### What is the A/D Line?
-                The Accumulation/Distribution (A/D) Line is a momentum indicator that assesses buying and selling pressure.
                 
-                #### Key Insights:
-                - **Rising A/D Line**: Indicates accumulation (more buying pressure). 
-                - **Falling A/D Line**: Indicates distribution (more selling pressure).
-                - **Bullish Divergence**: A/D Line increases while stock price decreases. Potential reversal to the upside.
-                - **Bearish Divergence**: A/D Line decreases while stock price increases. Potential reversal to the downside.
-                
-                **Tip**: Combine the A/D Line with price trends for better confirmation of market movements.
-                """)
+                with st.popover("❓ Explanations"):
+                    # Explanation and table
+                    st.markdown("""
+                    ### What is the A/D Line?
+                    The Accumulation/Distribution (A/D) Line is a momentum indicator that assesses buying and selling pressure.
 
-                st.markdown("""
-                ### Trading Tips:
-                - When the A/D Line and stock price **rise together**, it confirms a strong uptrend. **Consider holding or adding positions.**
-                - When the A/D Line and stock price **fall together**, it confirms a strong downtrend. **Consider reducing or exiting positions.**
-                - **Divergences**: 
-                    - Bullish divergence suggests a potential reversal to the upside. **Watch for entry signals.**
-                    - Bearish divergence suggests a potential reversal to the downside. **Prepare for possible exits.**
-                """)
+                    #### Key Insights:
+                    - **Rising A/D Line**: Indicates accumulation (more buying pressure). 
+                    - **Falling A/D Line**: Indicates distribution (more selling pressure).
+                    - **Bullish Divergence**: A/D Line increases while stock price decreases. Potential reversal to the upside.
+                    - **Bearish Divergence**: A/D Line decreases while stock price increases. Potential reversal to the downside.
+
+                    **Tip**: Combine the A/D Line with price trends for better confirmation of market movements.
+                    """)
+
+                    st.markdown("""
+                    ### Trading Tips:
+                    - When the A/D Line and stock price **rise together**, it confirms a strong uptrend. **Consider holding or adding positions.**
+                    - When the A/D Line and stock price **fall together**, it confirms a strong downtrend. **Consider reducing or exiting positions.**
+                    - **Divergences**: 
+                        - Bullish divergence suggests a potential reversal to the upside. **Watch for entry signals.**
+                        - Bearish divergence suggests a potential reversal to the downside. **Prepare for possible exits.**
+                    """)
 
                 # Create A/D Line plot
                 fig = fig_ad_line(ad_line_pd)
@@ -774,22 +775,22 @@ for t_idx, ticker in enumerate(selected_tickers):
             with tab_rsi:
                 st.subheader(
                     "📈 RSI", help="The RSI measures the intensity of overbought or oversold conditions.")
-
-                # Explanations for users
-                st.write("""
-                ### What is RSI?
-                RSI (Relative Strength Index) is a momentum indicator that measures the speed and change of price movements.
-                RSI values range from 0 to 100.
-                Formula: RSI = 100 - (100 / (1 + RS)), where RS = Average Gain / Average Loss.
                 
-                #### Key Levels:
-                - **Overbought (Above 70)**: The stock is potentially overvalued, and prices may reverse or correct downwards. 
-                - **Advice**: Consider selling or reducing positions if the RSI stays above 70 for a prolonged period.
-                - **Oversold (Below 30)**: The stock is potentially undervalued, and prices may reverse upwards. 
-                - **Advice**: Consider buying or increasing positions cautiously.
-                - **Between 30 and 70**: This range indicates normal market behavior. 
-                - **Advice**: No immediate action needed; monitor other indicators for confirmation.
-                """)
+                with st.popover("❓ Explanation"):
+                    st.write("""
+                    ### What is RSI?
+                    RSI (Relative Strength Index) is a momentum indicator that measures the speed and change of price movements.
+                    RSI values range from 0 to 100.
+                    Formula: RSI = 100 - (100 / (1 + RS)), where RS = Average Gain / Average Loss.
+
+                    #### Key Levels:
+                    - **Overbought (Above 70)**: The stock is potentially overvalued, and prices may reverse or correct downwards. 
+                    - **Advice**: Consider selling or reducing positions if the RSI stays above 70 for a prolonged period.
+                    - **Oversold (Below 30)**: The stock is potentially undervalued, and prices may reverse upwards. 
+                    - **Advice**: Consider buying or increasing positions cautiously.
+                    - **Between 30 and 70**: This range indicates normal market behavior. 
+                    - **Advice**: No immediate action needed; monitor other indicators for confirmation.
+                    """)
 
                 if time_window in [EnumPeriod.WEEK, EnumPeriod.DAY]:
                     st.markdown(

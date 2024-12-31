@@ -179,12 +179,15 @@ def display_stock_data(fig: pltg.Figure, stock_pd: pd.DataFrame, ticker: str, co
         # Display tabs
         display_tabs(stock_pd)
 
-        # Add link for more insights
+        # lien vers les insights
         with st.container():
             st.markdown("#### More Insights about this ticker")
-            if st.button("🧠 Click for more insights", key=f"insights_button_{ticker}"):
-                st.write("Redirecting to the insights page...")
-                st.page_link("app/insights.py")
+            if st.button("🧠 Click for to view insights", key=f"insights_button_{ticker}"):
+                # update la liste des tickers pour avoir le ticker selectionné en premier
+                selected_tickers.remove(ticker)
+                selected_tickers.insert(0, ticker)
+                st.session_state["selected_tickers"] = selected_tickers
+                st.switch_page("app/insights.py")
 
 
 ############################################################## Main View ##########################################################
@@ -205,7 +208,7 @@ if len(selected_tickers) == 0:
     display_no_ticker_message()
 
 waiting_spinner = st.spinner(
-    "Data is being loaded, please wait... This may take a while if you have selected multiple tickers or one/several sector(s).")
+    "Data is being loaded, please wait... This may take a while if you have selected multiple tickers.")
 waiting_spinner.__enter__()
 
 # stocks
@@ -213,7 +216,7 @@ ticker_values = get_stocks_df(
     period_to_yf_time_frame(time_window), selected_tickers)
 
 for t_idx, ticker in enumerate(selected_tickers):
-    # get stock data for the selected ticker and convert to pandas
+    # get stock data for the selected ticker and convert to pandas for plotly charts
     # display the candlestick chart
     stock_values = ticker_values.filter(
         ticker_values[ColumnNames.TICKER.value] == ticker)

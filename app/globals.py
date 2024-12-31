@@ -169,7 +169,7 @@ def select_options(dict_companies: dict, page: str) -> tuple:
 def display_no_ticker_message() -> None:
     """Displays a message when no ticker is selected."""
     with st.container(border=True):
-        st.write("Please select at least one ticker from the list.")
+        st.markdown("🛑 Please select at least **one ticker** from the list.")
         with st.container(border=True):
             st.page_link(page="app/roi_finder.py", label="Find Profitable Stocks", icon="🔍")
     st.stop()

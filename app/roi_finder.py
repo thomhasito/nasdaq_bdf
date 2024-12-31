@@ -277,7 +277,7 @@ def display_ticker_cards(highest_yield_pd: pd.DataFrame, return_df: DataFrame, t
                     st.rerun()
 
 # Main application header
-st.header("🔍💲 Profitable Stock Finder")
+st.header("🔍💲 Profitable stock finder")
 
 # Fetch company info
 df_ops = None
