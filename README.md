@@ -1,6 +1,10 @@
 # nasdaq_bdf
 
+BALSALOBRE Thomas, ARRIESSE Lucas
+
 ## Installation
+
+Installer toutes les dépendances nécessaires :
 
 ```bash
 pip install -r requirments.txt
