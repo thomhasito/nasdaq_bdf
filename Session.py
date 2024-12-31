@@ -9,7 +9,6 @@ from utils.const import APP_NAME, APP_VERSION, YF_CACHE
 class CachedLimiterSession(CacheMixin, LimiterMixin, RequestSession):
     pass
 
-
 class Session:
     _instance = None
     _app_name = APP_NAME

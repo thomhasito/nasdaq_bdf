@@ -2,6 +2,9 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,spark
 
 ### Python ###
+# Init files
+__init__.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
