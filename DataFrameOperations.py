@@ -130,7 +130,11 @@ class DataFrameOperations:
             self.logger.warning(
                 "%s column not found. Calculating returns first.", column_rate_name
             )
-            selected_df = self.calculate_period_return(period, self.selected_tickers)
+            selected_df = self.calculate_period_return(period)
+            if self.selected_tickers:
+                selected_df = selected_df.filter(
+                    F.col(ColumnNames.TICKER.value).isin(self.selected_tickers)
+                )
 
         return selected_df.groupBy([ColumnNames.TICKER.value, ColumnNames.COMPANY_NAME.value, ColumnNames.SECTOR.value]) \
                                         .agg(F.mean(F.col(column_rate_name)).alias(avg_rate_name)) \
@@ -274,16 +278,29 @@ class DataFrameOperations:
             )
             selected_df = self.calculate_daily_return()
 
+        if self.selected_tickers:
+            selected_df = selected_df.filter(
+                F.col(ColumnNames.TICKER.value).isin(self.selected_tickers)
+            )
+
         selected_df_a = selected_df.alias("a")
         selected_df_b = selected_df.alias("b")
 
-        joined_df = selected_df_a.join(
-            selected_df_b,
-            (F.col(f"a.{ColumnNames.DATE.value}") == F.col(f"b.{ColumnNames.DATE.value}"))
-            & (F.col(f"a.{ColumnNames.TICKER.value}") < F.col(f"b.{ColumnNames.TICKER.value}"))
-            & (F.col(f"a.{ColumnNames.TICKER.value}").isin(self.selected_tickers) |
-                F.col(f"b.{ColumnNames.TICKER.value}").isin(self.selected_tickers))
+        join_condition = (
+            F.col(f"a.{ColumnNames.DATE.value}")
+            == F.col(f"b.{ColumnNames.DATE.value}")
+        ) & (
+            F.col(f"a.{ColumnNames.TICKER.value}")
+            < F.col(f"b.{ColumnNames.TICKER.value}")
         )
+
+        if self.selected_tickers:
+            join_condition = join_condition & (
+                F.col(f"a.{ColumnNames.TICKER.value}").isin(self.selected_tickers)
+                | F.col(f"b.{ColumnNames.TICKER.value}").isin(self.selected_tickers)
+            )
+
+        joined_df = selected_df_a.join(selected_df_b, join_condition)
 
         correlation_df = (
             joined_df.groupBy(
