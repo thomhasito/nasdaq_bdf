@@ -1,16 +1,33 @@
-import pandas as pd
+import logging
+from typing import Iterable, Optional, Union
+
 import yfinance as yf
-from pyspark.sql.types import StructType, StructField, StringType, DateType, FloatType, IntegerType
-from pyspark.sql import functions as F
 from pyspark.sql import DataFrame, SparkSession
-from logging import Logger
+from pyspark.sql import functions as F
+from pyspark.sql.types import (
+    DateType,
+    FloatType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
+)
 from requests import Session as RequestSesssion
+
+from logging import Logger
 
 from utils.const import ColumnNames
 from pathlib import Path
 
 class NasdaqDF:    
-    def __init__(self, spark: SparkSession, logger: Logger, req_session: RequestSesssion, csv_path: Path, analysis_period: str):
+    def __init__(
+        self,
+        spark: SparkSession,
+        logger: Logger,
+        req_session: RequestSesssion,
+        csv_path: Path,
+        analysis_period: str,
+    ):
         self.spark = spark
         self.logger = logger
         self.session = req_session
@@ -19,6 +36,7 @@ class NasdaqDF:
         self.stock_schema = self._define_stock_schema()
         self.nasdaq_schema = self._define_nasdaq_schema()
         self.analysis_period = analysis_period
+        self.tickers_df: Optional[DataFrame] = None
 
     def _define_stock_schema(self):
         """Define the schema for the Spark DataFrame."""
@@ -56,10 +74,16 @@ class NasdaqDF:
                     ColumnNames.INDUSTRY.value,
                     ColumnNames.SECTOR.value,
                 )
+                .dropna(subset=[ColumnNames.TICKER.value])
             )
 
-            tickers_df = nasdaq_df.select(ColumnNames.TICKER.value).distinct()
-            self.tickers = [row[ColumnNames.TICKER.value] for row in tickers_df.collect()]
+            self.tickers_df = (
+                nasdaq_df.select(ColumnNames.TICKER.value)
+                .dropna()
+                .distinct()
+                .cache()
+            )
+            ticker_count = self.tickers_df.count()
 
         except Exception as e:
             self.logger.error(f"Failed to load companies or tickers in DataFrame: {e}")
@@ -69,93 +93,150 @@ class NasdaqDF:
             self.logger.warning("The nasdaq_df is None. No data loaded.")
             return None
 
-        ticker_count = nasdaq_df.select(ColumnNames.TICKER.value).distinct().count()
+        if self.tickers_df is None:
+            ticker_count = 0
         total_rows = nasdaq_df.count()
 
         if total_rows == 0:
             self.logger.warning("The nasdaq_df is empty after loading. No companies found.")
         elif ticker_count == 0:
             self.logger.warning("No distinct tickers found in nasdaq_df.")
-        elif total_rows < len(self.tickers):
-            self.logger.warning(
-                f"Loaded DataFrame has fewer rows ({total_rows}) than expected tickers ({len(self.tickers)})."
-            )
 
         self.logger.info(
             f"Companies DataFrame loaded successfully for {ticker_count} distinct tickers"
         )
         return nasdaq_df
 
-    def _download_single_ticker(self, ticker: str) -> DataFrame:
-        self.logger.info(f"Downloading ticker {ticker} ...")
-        stock_data = None
-        try:
-            stock_data = yf.download(
-                ticker,
-                period=self.analysis_period,
-                rounding=True,
-                session=self.session,
-                progress=False,
-            )
-
-            if stock_data.empty:
-                self.logger.warning(f"No data returned for ticker: {ticker}")
+    def _normalise_tickers_input(
+        self, tickers: Optional[Union[DataFrame, str, Iterable[str]]]
+    ) -> Optional[DataFrame]:
+        if tickers is None:
+            if self.tickers_df is None:
+                self.logger.warning(
+                    "Companies DataFrame not loaded yet. Call load_companies_df first."
+                )
                 return None
+            return self.tickers_df
 
-            stock_data.columns = stock_data.columns.get_level_values(0)
-            stock_data.columns.name = None
-            stock_data.index = stock_data.index.tz_localize("UTC")
-            stock_data[ColumnNames.DATE.value] = stock_data.index.date
-            stock_data[ColumnNames.TICKER.value] = ticker
+        if isinstance(tickers, DataFrame):
+            return tickers.select(ColumnNames.TICKER.value).dropna().distinct()
 
-            list_features = ColumnNames.get_ordered_items()
-            stock_data = stock_data[list_features].reset_index(drop=True)
+        if isinstance(tickers, str):
+            tickers = [tickers]
 
-        except Exception as e:
-            self.logger.error(f"Download failed for {ticker}: {e}")
+        if isinstance(tickers, Iterable):
+            ticker_rows = [(ticker,) for ticker in tickers if ticker]
+            if not ticker_rows:
+                return None
+            schema = StructType(
+                [StructField(ColumnNames.TICKER.value, StringType(), True)]
+            )
+            return self.spark.createDataFrame(ticker_rows, schema=schema)
+
+        self.logger.error(
+            "Unsupported tickers argument type %s. Expected DataFrame or iterable.",
+            type(tickers),
+        )
+        return None
+
+    def load_stocks_df(
+        self,
+        tickers: Optional[Union[DataFrame, str, Iterable[str]]] = None,
+        repartition_hint: Optional[int] = None,
+    ):
+        """
+        Download data for the provided tickers using Spark mapInPandas to avoid
+        materialising results on the driver.
+        """
+
+        tickers_df = self._normalise_tickers_input(tickers)
+        if tickers_df is None:
+            self.logger.warning("No tickers provided or available for download.")
             return None
 
-        if stock_data is not None:
-            nan_count = stock_data.isnull().sum().sum()
-            if nan_count > 0:
-                self.logger.warning(
-                    f"Found {nan_count} NaN values in the data for ticker: {ticker}"
+        if tickers_df.rdd.isEmpty():
+            self.logger.warning("Ticker DataFrame is empty. Nothing to download.")
+            return None
+
+        partitions = repartition_hint if repartition_hint and repartition_hint > 0 else None
+        if partitions:
+            tickers_df = tickers_df.repartition(
+                partitions, F.col(ColumnNames.TICKER.value)
+            )
+        else:
+            tickers_df = tickers_df.repartition(F.col(ColumnNames.TICKER.value))
+
+        logger_name = getattr(self.logger, "name", __name__)
+        analysis_period = self.analysis_period
+        request_headers = dict(self.session.headers) if self.session else {}
+
+        def download_partition(iterator):
+            from requests import Session as RequestsSession
+
+            import pandas as pd
+
+            local_logger = logging.getLogger(logger_name)
+            if not local_logger.handlers:
+                logging.basicConfig(level=logging.INFO)
+
+            session = RequestsSession()
+            session.headers.update(request_headers)
+
+            for pdf in iterator:
+                tickers_batch = (
+                    pdf[ColumnNames.TICKER.value]
+                    .dropna()
+                    .astype(str)
+                    .str.strip()
+                    .unique()
                 )
 
-        return stock_data
+                batch_frames = []
+                for ticker in tickers_batch:
+                    try:
+                        data = yf.download(
+                            ticker,
+                            period=analysis_period,
+                            rounding=True,
+                            session=session,
+                            progress=False,
+                        )
+                    except Exception as exc:  # pragma: no cover - network errors
+                        local_logger.warning(
+                            "Download failed for %s with error %s", ticker, exc
+                        )
+                        continue
 
-    def load_stocks_df(self, tickers=None):
-        """
-        Download data for all tickers with error handling and timeout. 
-        Can also additionnaly only download specified tickers to speed up downloading.
-        """
-        ttickers = tickers if tickers else getattr(self, "tickers", [])
+                    if data.empty:
+                        local_logger.info("No data returned for ticker %s", ticker)
+                        continue
 
-        self.logger.info(f"Beginning download of {len(ttickers)} tickers")
-        if not ttickers:
-            self.logger.warning("No tickers provided or loaded from companies list.")
-            return None
+                    data.columns = data.columns.get_level_values(0)
+                    data.columns.name = None
+                    data.index = data.index.tz_localize("UTC")
+                    data[ColumnNames.DATE.value] = data.index.date
+                    data[ColumnNames.TICKER.value] = ticker
+
+                    batch_frames.append(data[ColumnNames.get_ordered_items()])
+
+                if batch_frames:
+                    yield pd.concat(batch_frames, ignore_index=True)
 
         try:
-            frames = []
-            for ticker in ttickers:
-                data = self._download_single_ticker(ticker)
-                if data is not None:
-                    frames.append(data)
-
-            if not frames:
-                self.logger.warning("No stock data downloaded for the requested tickers.")
-                return None
-
-            combined_df = pd.concat(frames, ignore_index=True)
-            stock_df = self.spark.createDataFrame(combined_df, schema=self.stock_schema)
-
-            if len(ttickers) > 1:
-                stock_df = stock_df.repartition(F.col(ColumnNames.TICKER.value))
-
+            stock_df = tickers_df.mapInPandas(
+                download_partition, schema=self.stock_schema
+            )
         except Exception as e:
             self.logger.error(f"Failed to load stock DataFrame: {e}")
             return None
+
+        if stock_df.rdd.isEmpty():
+            self.logger.warning("Stock DataFrame is empty after downloads.")
+            return None
+
+        stock_df = stock_df.withColumn(
+            ColumnNames.DATE.value, F.to_date(F.col(ColumnNames.DATE.value))
+        )
 
         self.logger.info("Stock DataFrame loaded successfully.")
         return stock_df
