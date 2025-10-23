@@ -1,4 +1,5 @@
 import logging
+import os
 from requests import Session as RequestSession
 from requests_cache import CacheMixin, SQLiteCache
 from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
@@ -23,7 +24,9 @@ class Session:
 
         builder = SparkSession.builder
         assert isinstance(builder, SparkSession.Builder)
-        self.spark = builder.appName(Session._app_name).master("local[4]").getOrCreate()
+
+        spark_master = os.getenv("SPARK_MASTER", "local[*]")
+        self.spark = builder.appName(Session._app_name).master(spark_master).getOrCreate()
         self.spark.sparkContext.setLogLevel("ERROR")
         self.session = self._setup_session()
         Session._instance = self
